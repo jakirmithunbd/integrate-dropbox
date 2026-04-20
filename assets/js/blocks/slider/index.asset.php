@@ -1,0 +1,1 @@
+<?php return array('dependencies' => array('react', 'react-dom', 'react-jsx-runtime', 'wp-block-editor', 'wp-blocks', 'wp-components', 'wp-element', 'wp-i18n', 'ccpidb-shared'), 'version' => '10ba5b3f32162b60051d', 'handle' => 'undefined-blocks/slider/index');

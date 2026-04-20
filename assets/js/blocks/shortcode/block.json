@@ -1,0 +1,32 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "integrate-dropbox/shortcode",
+    "version": "1.0.0",
+    "title": "Shortcode",
+    "category": "integrate-dropbox",
+    "icon": "format-gallery",
+    "description": "Display files from Dropbox as a shortcode",
+    "keywords": ["shortcode", "Dropbox", "files"],
+    "textdomain": "integrate-dropbox",
+    "supports": {
+        "html": false,
+        "align": ["wide", "full"],
+        "spacing": {
+            "margin": true,
+            "padding": true
+        }
+    },
+    "attributes": {
+        "id": {
+            "type": "number"
+        },
+        "type": {
+            "type": "string",
+            "default": "shortcode"
+        }
+    },
+    "editorScript": "file:./index.js",
+    "editorStyle": "file:./index.css",
+    "style": "file:../../../../assets/css/common.css"
+}

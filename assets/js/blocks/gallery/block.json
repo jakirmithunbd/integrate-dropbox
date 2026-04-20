@@ -1,0 +1,32 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "integrate-dropbox/gallery",
+    "version": "1.0.0",
+    "title": "Gallery",
+    "category": "integrate-dropbox",
+    "icon": "format-gallery",
+    "description": "Display files from Dropbox as a gallery",
+    "keywords": ["gallery", "Dropbox", "files"],
+    "textdomain": "integrate-dropbox",
+    "supports": {
+        "html": false,
+        "align": ["wide", "full"],
+        "spacing": {
+            "margin": true,
+            "padding": true
+        }
+    },
+    "attributes": {
+        "id": {
+            "type": "number"
+        },
+        "type": {
+            "type": "string",
+            "default": "gallery"
+        }
+    },
+    "editorScript": "file:./index.js",
+    "editorStyle": "file:./index.css",
+    "style": "file:../../../../assets/css/common.css"
+}

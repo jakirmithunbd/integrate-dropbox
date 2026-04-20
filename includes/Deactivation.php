@@ -1,0 +1,131 @@
+<?php
+
+namespace CodeConfig\IDB;
+
+use CodeConfig\IDB\Utils\Helpers;
+
+defined('ABSPATH') || exit('No direct script access allowed');
+
+class Deactivation
+{
+    public static function init()
+    {
+        // Check uninstall settings before proceeding
+        if (empty(Helpers::getSetting('advanced.deleteDataOnUninstall', false))) {
+            return;
+        }
+
+        self::removeTables();
+        self::removePluginData();
+        self::removePluginSettings();
+        self::removeCustomCapabilities();
+        self::unscheduleCron();
+        self::removeTransients();
+
+        flush_rewrite_rules();
+    }
+
+    /**
+     * Remove custom database tables
+     */
+    private static function removeTables()
+    {
+        global $wpdb;
+
+        $tables = [
+            'ccpidb_shortcodes',
+            'ccpidb_user_access',
+            'ccpidb_logs',
+            'ccpidb_files',
+            'ccpidb_accounts',
+        ];
+
+        foreach ($tables as $table) {
+            $tableName = "$wpdb->prefix{$table}";
+            $wpdb->query($wpdb->prepare("DROP TABLE IF EXISTS %i", $tableName));
+        }
+    }
+
+    /**
+     * Remove plugin options and transients
+     */
+    private static function removePluginData()
+    {
+        $options = [
+            'ccpidb_version',
+            'ccpidb_install_time',
+            'ccpidb_encryption_key',
+            'ccpidb_notice',
+            'ccpidb_settings',
+            'ccpidb_update_1_3_0_completed',
+            'ccpidb_schedule_thumbnail_info_file_keys'
+        ];
+
+        foreach ($options as $key) {
+            delete_option($key);
+        }
+
+        // Delete all transients
+        global $wpdb;
+
+        $pattern1 = $wpdb->esc_like('_transient_ccpidb_') . '%';
+        $pattern2 = $wpdb->esc_like('_transient_timeout_ccpidb_') . '%';
+
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+            $pattern1,
+            $pattern2
+        ));
+
+        // Delete all plugin attachments
+        ccpidbDeleteAllAttachments();
+    }
+
+    /**
+     * Remove plugin main settings
+     */
+    private static function removePluginSettings()
+    {
+        delete_option(CCPIDB_OPTIONS_NAME);
+    }
+
+    /**
+     * Remove custom capabilities from all users
+     */
+    private static function removeCustomCapabilities()
+    {
+        $users = get_users([
+            'fields' => ['ID']
+        ]);
+
+        foreach ($users as $user) {
+            $userObj = get_user_by('ID', $user->ID);
+            if ($userObj) {
+                $userObj->remove_cap(CCPIDB_ACCESS_CAP);
+            }
+        }
+    }
+
+    private static function unscheduleCron()
+    {
+        $timestamp = wp_next_scheduled('ccpidb_cron_fire');
+
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, 'ccpidb_cron_fire');
+        }
+    }
+
+    private static function removeTransients()
+    {
+        global $wpdb;
+
+        $pattern1 = $wpdb->esc_like('_transient_ccpidb_') . '%';
+        $pattern2 = $wpdb->esc_like('_transient_timeout_ccpidb_') . '%';
+
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+            $pattern1,
+            $pattern2
+        ));
+    }
+}

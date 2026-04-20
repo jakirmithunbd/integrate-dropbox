@@ -1,0 +1,2 @@
+;"use strict";(globalThis.webpackChunkintegrate_dropbox=globalThis.webpackChunkintegrate_dropbox||[]).push([[465,637,769],{1609(e){e.exports=window.React},790(e){e.exports=window.ReactJSXRuntime},6087(e){e.exports=window.wp.element},7723(e){e.exports=window.wp.i18n}},e=>{e.O(0,[96,804],()=>e(e.s=2175)),e.O()}]);
+//# sourceMappingURL=embed-documents.js.map

@@ -1,0 +1,1 @@
+<?php return array('dependencies' => array('react', 'react-dom', 'react-jsx-runtime', 'wp-block-editor', 'wp-blocks', 'wp-components', 'wp-element', 'wp-i18n', 'ccpidb-shared'), 'version' => '2d06d41b3e4854f4468f', 'handle' => 'undefined-blocks/shortcode/index');

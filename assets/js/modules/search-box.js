@@ -1,0 +1,2 @@
+;"use strict";(globalThis.webpackChunkintegrate_dropbox=globalThis.webpackChunkintegrate_dropbox||[]).push([[147,220,249,465,610,620,637,769],{1609(e){e.exports=window.React},5795(e){e.exports=window.ReactDOM},790(e){e.exports=window.ReactJSXRuntime},6427(e){e.exports=window.wp.components},6087(e){e.exports=window.wp.element},7723(e){e.exports=window.wp.i18n}},e=>{e.O(0,[96,804],()=>e(e.s=2693)),e.O()}]);
+//# sourceMappingURL=search-box.js.map
