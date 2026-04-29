@@ -174,7 +174,7 @@ class CookieJar implements CookieJarInterface
         $result = $cookie->validate();
         if ($result !== true) {
             if ($this->strictMode) {
-                throw new \RuntimeException('Invalid cookie: ' . $result);
+                throw new \RuntimeException(esc_html(sprintf('Invalid cookie: %s', esc_html($result))));
             }
             $this->removeCookieIfEmpty($cookie);
 

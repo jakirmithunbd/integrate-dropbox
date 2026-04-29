@@ -107,7 +107,7 @@ class File extends BaseController
             [
                 'methods'             => WP_REST_Server::READABLE,
                 'callback'            => [$this, 'search'],
-                'permission_callback' => [$this, 'checkPermission'],
+                'permission_callback' => [$this, 'manageFilePermission'],
             ]
         ]);
 

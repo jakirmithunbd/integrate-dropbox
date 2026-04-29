@@ -362,7 +362,7 @@ class CurlFactory implements CurlFactoryInterface
                 if (\is_string($options['verify'])) {
                     // Throw an error if the file/folder/link path is not valid or doesn't exist.
                     if (! \file_exists($options['verify'])) {
-                        throw new \InvalidArgumentException("SSL CA bundle not found: {$options['verify']}");
+                        throw new \InvalidArgumentException(esc_html(sprintf("SSL CA bundle not found: %s", $options['verify'])));
                     }
                     // If it's a directory or a link to a directory use CURLOPT_CAPATH.
                     // If not, it's probably a file, or a link to a file, so use CURLOPT_CAINFO.
@@ -405,7 +405,7 @@ class CurlFactory implements CurlFactoryInterface
             $sink = \CodeConfig\IDB\Dropbox\GuzzleHttp\Psr7\Utils::streamFor($sink);
         } elseif (! \is_dir(\dirname($sink))) {
             // Ensure that the directory exists before failing in curl.
-            throw new \RuntimeException(\sprintf('Directory %s does not exist for sink value of %s', \dirname($sink), $sink));
+            throw new \RuntimeException(esc_html(sprintf('Directory %s does not exist for sink value of %s', \dirname($sink), $sink)));
         } else {
             $sink = new LazyOpenStream($sink, 'w+');
         }
@@ -487,7 +487,7 @@ class CurlFactory implements CurlFactoryInterface
                 $cert                         = $cert[0];
             }
             if (! \file_exists($cert)) {
-                throw new \InvalidArgumentException("SSL certificate not found: {$cert}");
+                throw new \InvalidArgumentException(sprintf("SSL certificate not found: %s", esc_html($cert)));
             }
             // OpenSSL (versions 0.9.3 and later) also support "P12" for PKCS#12-encoded files.
             // see https://curl.se/libcurl/c/CURLOPT_SSLCERTTYPE.html
@@ -510,7 +510,7 @@ class CurlFactory implements CurlFactoryInterface
             $sslKey = isset($sslKey) ? $sslKey : $options['ssl_key'];
 
             if (! \file_exists($sslKey)) {
-                throw new \InvalidArgumentException("SSL private key not found: {$sslKey}");
+                throw new \InvalidArgumentException(esc_html(sprintf("SSL private key not found: %s", $sslKey)));
             }
             $conf[\CURLOPT_SSLKEY] = $sslKey;
         }
@@ -518,7 +518,7 @@ class CurlFactory implements CurlFactoryInterface
         if (isset($options['progress'])) {
             $progress = $options['progress'];
             if (! \is_callable($progress)) {
-                throw new \InvalidArgumentException('progress client option must be callable');
+                throw new \InvalidArgumentException(esc_html('progress client option must be callable'));
             }
             $conf[\CURLOPT_NOPROGRESS]       = false;
             $conf[\CURLOPT_PROGRESSFUNCTION] = static function ($resource, int $downloadSize, int $downloaded, int $uploadSize, int $uploaded) use ($progress) {
@@ -585,7 +585,7 @@ class CurlFactory implements CurlFactoryInterface
             $onHeaders = $easy->options['on_headers'];
 
             if (! \is_callable($onHeaders)) {
-                throw new \InvalidArgumentException('on_headers must be callable');
+                throw new \InvalidArgumentException(esc_html('on_headers must be callable'));
             }
         } else {
             $onHeaders = null;

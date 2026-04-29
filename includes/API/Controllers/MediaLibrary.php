@@ -27,7 +27,7 @@ class MediaLibrary extends BaseController {
         register_rest_route( $this->namespace, $this->rest_base . '/clear', [[
             'methods'             => WP_REST_Server::DELETABLE,
             'callback'            => [$this, 'deleteAttachment'],
-            'permission_callback' => [$this, 'checkPermission'],
+            'permission_callback' => [$this, 'manageSettingsPermission'],
             'args'                => [],
         ]] );
     }

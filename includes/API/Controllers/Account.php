@@ -43,7 +43,7 @@ class Account extends BaseController {
         register_rest_route( $this->namespace, "{$this->rest_base}/switch", [
             "methods"             => WP_REST_Server::EDITABLE,
             "callback"            => [$this, "switch"],
-            "permission_callback" => [$this, "managePermission"],
+            "permission_callback" => [$this, "manageSettingsPermission"],
         ] );
         register_rest_route( $this->namespace, "{$this->rest_base}/(?P<id>[^/]+)", [[
             'methods'             => WP_REST_Server::READABLE,

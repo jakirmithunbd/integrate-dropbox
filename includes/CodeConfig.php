@@ -111,16 +111,15 @@ class CodeConfig {
     }
 
     public function doingAuth() {
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( !wp_verify_nonce( explode( '|', sanitize_text_field( wp_unslash( $_GET['state'] ?? '' ) ) )[1] ?? '', 'ccpidb-auth-nonce' ) ) {
+            wp_die( esc_html__( 'Invalid authorization request.', 'integrate-dropbox' ) );
+        }
         $state = sanitize_text_field( wp_unslash( $_GET['state'] ?? '' ) );
         if ( empty( $state ) ) {
             wp_die( esc_html__( 'Invalid authorization request.', 'integrate-dropbox' ) );
         }
-        $explodeState = explode( '|', $state );
-        $nonce = $explodeState[1] ?? '';
-        if ( !wp_verify_nonce( $nonce, 'ccpidb-auth-nonce' ) ) {
-            wp_die( esc_html__( 'Invalid authorization request.', 'integrate-dropbox' ) );
-        }
+        // $explodeState = explode('|', $state);
+        // $nonce = $explodeState[1] ?? '';
         $code = sanitize_text_field( wp_unslash( $_GET['code'] ?? '' ) );
         if ( empty( $code ) ) {
             wp_die( esc_html__( 'Authorization code is missing.', 'integrate-dropbox' ) );

@@ -35,7 +35,8 @@ class Update {
         '1.3.2',
         '1.3.4',
         '1.3.5',
-        '1.3.7'
+        '1.3.7',
+        '1.3.10'
     ];
 
     public function __construct() {

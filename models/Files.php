@@ -2,6 +2,7 @@
 
 namespace CodeConfig\IDB\Models;
 
+defined( 'ABSPATH' ) || exit( 'No direct script access allowed' );
 use CodeConfig\IDB\App\Account;
 use CodeConfig\IDB\App\Accounts;
 use CodeConfig\IDB\App\File;
@@ -14,6 +15,7 @@ use function in_array;
 use function intval;
 use function is_array;
 use WP_Error;
+// phpcs:disable WordPress.DB.DirectDatabaseQuery
 class Files extends BaseModel {
     use Singleton;
     public const TABLE_NAME = 'ccpidb_files';
@@ -65,8 +67,7 @@ class Files extends BaseModel {
     /**
      * Retrieves a list of files from the specified folder and account.
      *
-     * @param string $rootId The ID of the root folder to retrieve files from.
-     * @param string $accountId The ID of the account associated with the files.
+     * @param string $folderKey The key of the folder to retrieve files from.
      * @param array $config Optional configuration settings for retrieving files.
      *
      * @return array|null|WP_Error An array of processed file data from the specified folder.
@@ -82,7 +83,7 @@ class Files extends BaseModel {
         $order = $this->sanitizeOrder( $config['order'] ?? 'DESC' );
         $orderBy = $this->sanitizeOrderBy( $config['orderBy'] ?? 'createdAt', $allowedOrderBy );
         $page = ( isset( $config['page'] ) ? (int) $config['page'] : 1 );
-        $perPage = ( isset( $config['perPage'] ) ? (int) $config['perPage'] : 20 );
+        $perPage = ( isset( $config['perPage'] ) ? (int) $config['perPage'] : self::DEFAULT_ITEMS_PER_PAGE );
         $pagination = $this->sanitizePagination( $page, $perPage );
         if ( $folderKey !== '/' ) {
             $file = $this->getFile( $folderKey );
@@ -114,23 +115,23 @@ class Files extends BaseModel {
         }
         if ( !current_user_can( 'manage_options' ) && !wp_doing_cron() ) {
             if ( !is_user_logged_in() ) {
-                return new WP_Error('unauthorized', __( 'You must be logged in to access this folder.', 'integrate-dropbox' ));
+                return new WP_Error(401, __( 'You must be logged in to access this folder.', 'integrate-dropbox' ));
             }
             $user = wp_get_current_user();
             if ( !$user instanceof \WP_User ) {
-                return new WP_Error('unauthorized', __( 'You must be logged in to access this folder.', 'integrate-dropbox' ));
+                return new WP_Error(401, __( 'You must be logged in to access this folder.', 'integrate-dropbox' ));
             }
             $userName = $user->user_login;
             $roles = $user->roles;
             $accessSettings = UserAccess::getInstance()->getAccessData( $userName, $roles );
             if ( empty( $accessSettings ) ) {
                 if ( !current_user_can( 'manage_options' ) ) {
-                    return new WP_Error('forbidden', __( 'You do not have permission to access this folder.', 'integrate-dropbox' ));
+                    return new WP_Error(403, __( 'You do not have permission to access this folder.', 'integrate-dropbox' ));
                 }
             } else {
                 $accessSettingsFolders = $accessSettings['folders'] ?? [];
                 if ( empty( $accessSettingsFolders ) || !is_array( $accessSettingsFolders ) ) {
-                    return new WP_Error('forbidden', __( 'You do not have permission to access this folder.', 'integrate-dropbox' ));
+                    return new WP_Error(403, __( 'You do not have permission to access this folder.', 'integrate-dropbox' ));
                 }
                 if ( $folderKey === '/' ) {
                     $folder = $this->getFilesByKeys( $accessSettingsFolders, [
@@ -144,7 +145,7 @@ class Files extends BaseModel {
                     return $folder;
                 }
                 if ( !Helpers::validateFileKey( $folderKey, $accessSettingsFolders ) ) {
-                    return new WP_Error('forbidden', __( 'You do not have permission to access this folder.', 'integrate-dropbox' ));
+                    return new WP_Error(403, __( 'You do not have permission to access this folder.', 'integrate-dropbox' ));
                 }
             }
         }
@@ -294,9 +295,9 @@ class Files extends BaseModel {
             'recursive'      => false,
             'returnType'     => 'array',
             'page'           => 1,
-            'perPage'        => 24,
-            'orderBy'        => 'createdAt',
-            'order'          => 'DESC',
+            'perPage'        => self::DEFAULT_ITEMS_PER_PAGE,
+            'orderBy'        => 'name',
+            'order'          => 'ASC',
             'search'         => '',
             'searchScope'    => 'folder',
             'searchLocation' => 'cache',
@@ -304,12 +305,12 @@ class Files extends BaseModel {
             'accountId'      => '',
         ];
         $args = wp_parse_args( $args, $defaults );
+        $page = (int) ($args['page'] ?? 1);
+        $perPage = (int) ($args['perPage'] ?? self::DEFAULT_ITEMS_PER_PAGE);
+        $orderBy = $args['orderBy'];
+        $order = $args['order'];
         $recursive = $args['recursive'];
         $moduleType = $args['moduleType'] ?? '';
-        $accountId = $args['accountId'] ?? null;
-        if ( 'search-box' === $moduleType && empty( $args['search'] ) && $recursive && ($args['fileKey'] ?? '') !== '/' ) {
-            $moduleType = 'file-browser';
-        }
         $returnType = $args['returnType'];
         $shortcodeId = $args['shortcodeId'] ?? '';
         $additionalExtensions = $args['extensions'] ?? [];
@@ -319,93 +320,103 @@ class Files extends BaseModel {
         $namesString = $args['names'] ?? '';
         $namesFilterType = $args['namesFilterType'] ?? '';
         $applyNamesFilter = $args['applyNameFilter'] ?? [];
-        $types = $args['types'] ?? [];
+        $types = $args['types'] ?? '';
+        if ( 'search-box' === $moduleType && empty( $search ) && $recursive && ($args['fileKey'] ?? '') !== '/' ) {
+            $moduleType = 'file-browser';
+        }
         $extensions = ccpidbGetAllowedModuleExtensions( $moduleType );
         $allowedExtensions = $this->processExtensions( $extensions, $additionalExtensions, $extensionsFilterType );
-        $filesData = $this->getFileAttributesByKeys( $keys, [
-            'id',
-            'path',
-            'accountId',
-            'name',
-            'isDir'
-        ], $accountId );
-        if ( is_wp_error( $filesData ) || empty( $filesData ) ) {
-            return ( $filesData ?: [] );
+        $cacheKeyBase = 'ccpidb_keys_' . md5( serialize( $keys ) . serialize( $args ) );
+        $cache_key = $cacheKeyBase . '_files';
+        $cached = wp_cache_get( $cache_key, 'ccpidb_files' );
+        if ( $cached !== false ) {
+            return $cached;
         }
+        global $wpdb;
+        $placeholders = implode( ',', array_fill( 0, count( $keys ), '%s' ) );
+        $preparedQuery = $wpdb->prepare( "SELECT path, accountId FROM %i WHERE `fileKey` IN ({$placeholders})", array_merge( [$this->tableName], $keys ) );
+        $filesData = $wpdb->get_results( $preparedQuery, ARRAY_A );
         if ( empty( $filesData ) ) {
             return [];
         }
-        $paths = array_filter( array_map( fn( $file ) => $file['path'] ?? null, $filesData ) );
-        if ( empty( $paths ) ) {
+        $pathsWithAccount = [];
+        foreach ( $filesData as $file ) {
+            if ( !empty( $file['path'] ) && !empty( $file['accountId'] ) ) {
+                if ( !isset( $pathsWithAccount[$file['accountId']] ) ) {
+                    $pathsWithAccount[$file['accountId']] = [];
+                }
+                $pathsWithAccount[$file['accountId']][] = $file['path'];
+            }
+        }
+        if ( empty( $pathsWithAccount ) ) {
             return [];
         }
-        global $wpdb;
-        $sql = $wpdb->prepare( "SELECT * FROM %i WHERE 1 = 1", $this->tableName );
-        $totalSql = $wpdb->prepare( "SELECT COUNT(*) as count FROM %i WHERE 1 = 1", $this->tableName );
+        $sql = $wpdb->prepare( "SELECT * FROM %i WHERE 1=1", $this->tableName );
+        $totalSql = $wpdb->prepare( "SELECT COUNT(*) as count FROM %i WHERE 1=1", $this->tableName );
         if ( !empty( $search ) ) {
-            $searchPath = [];
             if ( $searchScope === 'global' ) {
-                foreach ( $filesData as $file ) {
-                    $searchPath[] = $this->getSuccessors( $file['path'], $file['accountId'] );
+                $allPaths = [];
+                foreach ( $pathsWithAccount as $accId => $paths ) {
+                    $allPaths[$accId] = $this->getAllDescendantPaths( $paths, $accId );
                 }
-                $paths = array_merge( ...$searchPath );
+                $pathsWithAccount = $allPaths;
             }
-            if ( empty( $paths ) ) {
+            if ( empty( $pathsWithAccount ) ) {
                 return [];
             }
-            $placeholders = implode( ',', array_fill( 0, count( $paths ), '%s' ) );
-            $isMultiplePaths = count( $paths ) > 1;
-            if ( $isMultiplePaths || 'global' === $searchScope ) {
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                $sql .= $wpdb->prepare( " AND (`path` IN ({$placeholders}) OR `parent` IN ({$placeholders})) AND `name` LIKE %s", array_merge( $paths, $paths, ["%{$search}%"] ) );
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                $totalSql .= $wpdb->prepare( " AND (`path` IN ({$placeholders}) OR `parent` IN ({$placeholders})) AND `name` LIKE %s", array_merge( $paths, $paths, ["%{$search}%"] ) );
-            } else {
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                $sql .= $wpdb->prepare( " AND (`parent` IN ({$placeholders})) AND `name` LIKE %s", array_merge( $paths, ["%{$search}%"] ) );
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                $totalSql .= $wpdb->prepare( " AND (`parent` IN ({$placeholders})) AND `name` LIKE %s", array_merge( $paths, ["%{$search}%"] ) );
-            }
-        } elseif ( $recursive ) {
-            $placeholders = implode( ',', array_fill( 0, count( $paths ), '%s' ) );
-            if ( $moduleType === 'file-browser' ) {
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-                $sql .= $wpdb->prepare( " AND `parent` IN ({$placeholders})", $paths );
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-                $totalSql .= $wpdb->prepare( " AND `parent` IN ({$placeholders})", $paths );
-            } elseif ( $moduleType === 'file-uploader' ) {
-                $uploadKeys = json_decode( sanitize_text_field( wp_unslash( $_COOKIE["ccpidb_file_uploader_files_{$shortcodeId}"] ?? '' ) ), true );
-                if ( empty( $uploadKeys ) || !is_array( $uploadKeys ) ) {
-                    return [];
+            $sqlLogic = [];
+            foreach ( $pathsWithAccount as $accountId => $paths ) {
+                $placeholders = implode( ',', array_fill( 0, count( $paths ), '%s' ) );
+                $isMultiplePaths = count( $paths ) > 1;
+                if ( $isMultiplePaths || 'global' === $searchScope ) {
+                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                    $sqlLogic[] = $wpdb->prepare( "((`path` IN ({$placeholders}) OR `parent` IN ({$placeholders})) AND `name` LIKE %s AND `accountId` = %s)", array_merge( $paths, $paths, ["%{$search}%", $accountId] ) );
+                } else {
+                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                    $sqlLogic[] = $wpdb->prepare( " (`parent` IN ({$placeholders}) AND `name` LIKE %s AND `accountId` = %s)", array_merge( $paths, ["%{$search}%, {$accountId}"] ) );
                 }
-                $uploadKeysPlaceholders = implode( ',', array_fill( 0, count( $uploadKeys ), '%s' ) );
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-                $sql .= $wpdb->prepare( " AND `parent` IN ({$placeholders}) AND `fileKey` IN ({$uploadKeysPlaceholders})", array_merge( $paths, $uploadKeys ) );
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-                $totalSql .= $wpdb->prepare( " AND `parent` IN ({$placeholders}) AND `fileKey` IN ({$uploadKeysPlaceholders})", array_merge( $paths, $uploadKeys ) );
-            } else {
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-                $sql .= $wpdb->prepare( " AND (`path` IN ({$placeholders}) OR `parent` IN ({$placeholders}))", ...$paths, ...$paths );
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-                $totalSql .= $wpdb->prepare( " AND (`path` IN ({$placeholders}) OR `parent` IN ({$placeholders}))", ...$paths, ...$paths );
             }
+            $sql .= ' AND (' . implode( ' OR ', $sqlLogic ) . ')';
+            $totalSql .= ' AND (' . implode( ' OR ', $sqlLogic ) . ')';
+        } elseif ( $recursive ) {
+            $sqlLogic = [];
+            foreach ( $pathsWithAccount as $accountId => $paths ) {
+                $placeholders = implode( ',', array_fill( 0, count( $paths ), '%s' ) );
+                $folderExpandable = $args['folderExpandable'] ?? false;
+                if ( $moduleType === 'file-browser' || $folderExpandable ) {
+                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                    $sqlLogic[] = $wpdb->prepare( "(`parent` IN ({$placeholders}) AND `accountId` = %s)", array_merge( $paths, [$accountId] ) );
+                } elseif ( $moduleType === 'file-uploader' ) {
+                    $uploadKeys = json_decode( sanitize_text_field( wp_unslash( $_COOKIE["ccpidb_file_uploader_files_{$shortcodeId}"] ?? '' ) ), true );
+                    if ( empty( $uploadKeys ) || !is_array( $uploadKeys ) ) {
+                        return [];
+                    }
+                    $uploadKeysPlaceholders = implode( ',', array_fill( 0, count( $uploadKeys ), '%s' ) );
+                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                    $sqlLogic[] = $wpdb->prepare( "(`parent` IN ({$placeholders}) AND `fileKey` IN ({$uploadKeysPlaceholders}) AND `accountId` = %s)", array_merge( $paths, $uploadKeys, [$accountId] ) );
+                } else {
+                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                    $sqlLogic[] = $wpdb->prepare( "((`path` IN ({$placeholders}) OR `parent` IN ({$placeholders})) AND `accountId` = %s)", array_merge( $paths, $paths, [$accountId] ) );
+                }
+            }
+            $sql .= ' AND (' . implode( ' OR ', $sqlLogic ) . ')';
+            $totalSql .= ' AND (' . implode( ' OR ', $sqlLogic ) . ')';
         } else {
             if ( !empty( $allowedExtensions ) && !in_array( 'folder', $allowedExtensions ) ) {
                 $allowedExtensions[] = 'folder';
             }
-            $placeholders = implode( ',', array_fill( 0, count( $paths ), '%s' ) );
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-            $sql .= $wpdb->prepare( " AND `path` IN ({$placeholders})", $paths );
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-            $totalSql .= $wpdb->prepare( " AND `path` IN ({$placeholders})", $paths );
+            $sqlLogic = [];
+            foreach ( $pathsWithAccount as $accountId => $paths ) {
+                $placeholders = implode( ',', array_fill( 0, count( $paths ), '%s' ) );
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                $sqlLogic[] = $wpdb->prepare( " `path` IN ({$placeholders}) AND `accountId` = %s", array_merge( $paths, [$accountId] ) );
+            }
+            $sql .= ' AND (' . implode( ' OR ', $sqlLogic ) . ')';
+            $totalSql .= ' AND (' . implode( ' OR ', $sqlLogic ) . ')';
         }
         if ( !empty( $types ) && is_array( $types ) ) {
             $extensions = MimeTypeManager::getExtensionsByCategory( $types );
-            $extPlaceholders = implode( ',', array_fill( 0, count( $extensions ), '%s' ) );
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-            $sql .= $wpdb->prepare( " AND `extension` IN ({$extPlaceholders})", $extensions );
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-            $totalSql .= $wpdb->prepare( " AND `extension` IN ({$extPlaceholders})", $extensions );
+            $allowedExtensions = array_merge( $allowedExtensions, $extensions );
         }
         if ( !empty( $allowedExtensions ) ) {
             $extPlaceholders = implode( ',', array_fill( 0, count( $allowedExtensions ), '%s' ) );
@@ -424,22 +435,15 @@ class Files extends BaseModel {
             ];
             $orderBy = $this->sanitizeOrderBy( $args['orderBy'], $allowedOrderBy );
             $order = $this->sanitizeOrder( $args['order'] );
-            $offset = $this->sanitizePagination( $args['page'], $args['perPage'] );
             if ( $order === 'ASC' ) {
-                $sql .= $wpdb->prepare(
-                    " ORDER BY (CASE WHEN extension = 'folder' THEN 0 ELSE 1 END), %i ASC LIMIT %d OFFSET %d",
-                    $orderBy,
-                    $offset['perPage'],
-                    $offset['offset']
-                );
+                $sql .= $wpdb->prepare( " ORDER BY (CASE WHEN extension = 'folder' THEN 0 ELSE 1 END), %i ASC", $orderBy );
             } else {
-                $sql .= $wpdb->prepare(
-                    " ORDER BY (CASE WHEN extension = 'folder' THEN 0 ELSE 1 END), %i DESC LIMIT %d OFFSET %d",
-                    $orderBy,
-                    $offset['perPage'],
-                    $offset['offset']
-                );
+                $sql .= $wpdb->prepare( " ORDER BY (CASE WHEN extension = 'folder' THEN 0 ELSE 1 END), %i DESC", $orderBy );
             }
+        }
+        if ( !empty( $args['perPage'] ) && !empty( $args['page'] ) ) {
+            $offset = $this->sanitizePagination( $args['page'], $args['perPage'] );
+            $sql .= $wpdb->prepare( " LIMIT %d OFFSET %d", $offset['perPage'], $offset['offset'] );
         }
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
         $files = $wpdb->get_results( $sql );
@@ -448,10 +452,17 @@ class Files extends BaseModel {
         if ( empty( $files ) || is_wp_error( $files ) || is_wp_error( $totalCount ) ) {
             return [];
         }
-        $files = $this->processFiles( $files, $returnType );
+        if ( !empty( $processedExtensions ) && !in_array( 'folder', $processedExtensions ) ) {
+            $allowedExtensions = array_filter( $processedExtensions, function ( $ext ) {
+                return $ext !== 'folder';
+            } );
+        }
+        $files = $this->processFiles( $files, $returnType, [
+            'extension' => $allowedExtensions,
+        ] );
         $totalFiles = ( isset( $totalCount->count ) ? (int) $totalCount->count : count( $files ) );
         $page = $offset['page'] ?? 1;
-        $totalPage = ceil( $totalFiles / ($offset['perPage'] ?? 1) );
+        $totalPage = ceil( $totalFiles / ($offset['perPage'] ?? self::DEFAULT_ITEMS_PER_PAGE) );
         $response = [
             'breadcrumb'  => [[
                 'fileKey' => '/',
@@ -465,6 +476,14 @@ class Files extends BaseModel {
         ];
         if ( $response['hasMore'] ) {
             $response['nextPage'] = $page + 1;
+        }
+        if ( !empty( $files ) ) {
+            wp_cache_set(
+                $cache_key,
+                $response,
+                'ccpidb_files',
+                MINUTE_IN_SECONDS * 5
+            );
         }
         return $response;
     }
@@ -619,24 +638,27 @@ class Files extends BaseModel {
             return 0;
         }
         $fileKeys = (array) $fileKeys;
-        $files = $this->getFileAttributesByKeys( $fileKeys, ['accountId', 'path', 'isDir'] );
+        $placeholders = implode( ',', array_fill( 0, count( $fileKeys ), '%s' ) );
+        $sql = $wpdb->prepare( "SELECT accountId, path, isDir FROM %i WHERE fileKey IN ({$placeholders})", array_merge( [$this->tableName], $fileKeys ) );
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $files = $wpdb->get_results( $sql, ARRAY_A );
         if ( empty( $files ) ) {
             return 0;
         }
         $filePaths = [];
-        $folderRefs = [];
+        $pathsByAccount = [];
         foreach ( $files as $file ) {
             if ( empty( $file['path'] ) || empty( $file['accountId'] ) ) {
                 continue;
             }
             if ( !empty( $file['isDir'] ) ) {
-                $folderRefs[] = [$file['path'], $file['accountId']];
+                $pathsByAccount[$file['accountId']][] = $file['path'];
             } else {
                 $filePaths[] = $file['path'];
             }
         }
-        foreach ( $folderRefs as [$path, $accountId] ) {
-            $filePaths = array_merge( $filePaths, (array) $this->getSuccessors( $path, $accountId ) );
+        foreach ( $pathsByAccount as $accountId => $paths ) {
+            $filePaths = array_merge( $filePaths, $this->getAllDescendantPaths( $paths, $accountId ) );
         }
         if ( empty( $filePaths ) ) {
             return 0;
@@ -912,56 +934,71 @@ class Files extends BaseModel {
             return [];
         }
         global $wpdb;
-        $placeholders = implode( ',', array_fill( 0, count( $keys ), '%s' ) );
-        //phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        $preparedQuery = $wpdb->prepare( "SELECT * FROM %i WHERE `fileKey` IN ({$placeholders})", array_merge( [$this->tableName], $keys ) );
-        if ( !empty( $accountId ) ) {
-            $preparedQuery .= $wpdb->prepare( " AND `accountId` = %s", $accountId );
+        $sanitizedAttributes = array_filter( $attributes, fn( $col ) => in_array( $col, self::COLUMNS, true ) );
+        if ( empty( $sanitizedAttributes ) ) {
+            return [];
         }
-        $cacheKey = "ccpidb_file_attributes_" . md5( $preparedQuery . implode( ',', $attributes ) );
+        $placeholders = implode( ',', array_fill( 0, count( $keys ), '%s' ) );
+        $selectColsPlaceholders = implode( ',', array_fill( 0, count( $sanitizedAttributes ), '%i' ) );
+        $cacheKey = "ccpidb_attrs_" . md5( implode( ',', $sanitizedAttributes ) . implode( ',', $keys ) . $accountId );
         if ( false !== ($cached = wp_cache_get( $cacheKey, 'ccpidb_files' )) ) {
             return $cached;
         }
+        $sql = $wpdb->prepare( "SELECT {$selectColsPlaceholders} FROM %i WHERE fileKey IN ({$placeholders})", array_merge( $sanitizedAttributes, [$this->tableName], $keys ) );
+        if ( !empty( $accountId ) ) {
+            $sql .= $wpdb->prepare( " AND accountId = %s", $accountId );
+        }
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-        $files = $wpdb->get_results( $preparedQuery );
+        $files = $wpdb->get_results( $sql, ARRAY_A );
         if ( empty( $files ) ) {
             return [];
         }
-        $processedFiles = $this->processFiles( $files, 'object' );
-        if ( count( $attributes ) === 1 ) {
-            $attr = $attributes[0];
-            $result = [];
-            foreach ( $processedFiles as $file ) {
-                $result[] = $file->{$attr} ?? null;
-            }
-            wp_cache_set( $cacheKey, $result, 'ccpidb_files' );
+        if ( count( $sanitizedAttributes ) === 1 ) {
+            $attr = $sanitizedAttributes[0];
+            $result = array_column( $files, $attr );
+            wp_cache_set(
+                $cacheKey,
+                $result,
+                'ccpidb_files',
+                MINUTE_IN_SECONDS * 5
+            );
             return $result;
         }
-        $result = [];
-        foreach ( $processedFiles as $file ) {
-            $fileData = [];
-            foreach ( $attributes as $attr ) {
-                $fileData[$attr] = $file->{$attr} ?? null;
-            }
-            $result[] = $fileData;
-        }
-        wp_cache_set( $cacheKey, $result, 'ccpidb_files' );
-        return $result;
+        wp_cache_set(
+            $cacheKey,
+            $files,
+            'ccpidb_files',
+            MINUTE_IN_SECONDS * 5
+        );
+        return $files;
     }
 
-    public function getSuccessors( $parentPath, $accountId ) {
-        $successor = [];
-        $folders = $this->getChildFolderIds( $parentPath, $accountId );
-        foreach ( $folders as $folderRow ) {
-            $folderPath = $folderRow['path'];
-            $successor[] = $folderPath;
-            $childFolders = $this->getChildFolderIds( $folderPath, $accountId );
-            if ( !empty( $childFolders ) ) {
-                $successor = array_merge( $successor, $this->getSuccessors( $folderPath, $accountId ) );
+    private function getAllDescendantPaths( array $paths, $accountId ) {
+        if ( empty( $paths ) ) {
+            return [];
+        }
+        global $wpdb;
+        $paths = array_unique( $paths );
+        $allPaths = $paths;
+        $queue = $paths;
+        while ( !empty( $queue ) ) {
+            $placeholders = implode( ',', array_fill( 0, count( $queue ), '%s' ) );
+            $query = $wpdb->prepare( "SELECT path FROM %i WHERE parent IN ({$placeholders}) AND accountId = %s AND extension = 'folder'", array_merge( [$this->tableName], $queue, [$accountId] ) );
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            $children = $wpdb->get_results( $query, ARRAY_A );
+            if ( empty( $children ) ) {
+                break;
+            }
+            $queue = [];
+            foreach ( $children as $child ) {
+                $childPath = $child['path'];
+                if ( !in_array( $childPath, $allPaths, true ) ) {
+                    $allPaths[] = $childPath;
+                    $queue[] = $childPath;
+                }
             }
         }
-        $successor[] = $parentPath;
-        return array_unique( $successor );
+        return $allPaths;
     }
 
     public function getAllPhotos( $args = [] ) {
@@ -1035,12 +1072,12 @@ class Files extends BaseModel {
     public function searchFiles( $query, $options = [] ) {
         global $wpdb;
         if ( empty( $query ) || empty( $options['accountId'] ) ) {
-            return new WP_Error('invalid_query', __( 'Search query and account ID are required.', 'integrate-dropbox' ));
+            return new WP_Error(401, __( 'Search query and account ID are required.', 'integrate-dropbox' ));
         }
         $defaults = [
             'path'    => '/',
             'scope'   => 'folder',
-            'perPage' => 20,
+            'perPage' => self::DEFAULT_ITEMS_PER_PAGE,
             'page'    => 1,
             'orderBy' => 'name',
             'order'   => 'ASC',
@@ -1203,10 +1240,10 @@ class Files extends BaseModel {
         $hashedPassword = md5( sanitize_text_field( $password ) );
         if ( !empty( $shareInfo['password'] ) ) {
             if ( empty( $password ) ) {
-                return new WP_Error('password_required', __( 'This shared link is protected by a password. Please provide the password to access the file.', 'integrate-dropbox' ));
+                return new WP_Error(401, __( 'This shared link is protected by a password. Please provide the password to access the file.', 'integrate-dropbox' ));
             }
             if ( $shareInfo['password'] !== $hashedPassword ) {
-                return new WP_Error('invalid_password', __( 'The provided password is incorrect.', 'integrate-dropbox' ));
+                return new WP_Error(401, __( 'The provided password is incorrect.', 'integrate-dropbox' ));
             }
         }
         $shareInfo['viewCount'] = intval( $shareInfo['viewCount'] ?? 0 ) + 1;
@@ -1235,15 +1272,15 @@ class Files extends BaseModel {
         $downloadLimit = intval( $downloadInfo['limit'] ?? 0 );
         if ( $downloadLimit > 0 && intval( $downloadInfo['downloadCount'] ?? 0 ) >= $downloadLimit ) {
             $this->deleteDownloadEntry( $fileKey, $linkKey );
-            return new WP_Error('download_limit_exceeded', __( 'The download limit for this link has been exceeded.', 'integrate-dropbox' ));
+            return new WP_Error(401, __( 'The download limit for this link has been exceeded.', 'integrate-dropbox' ));
         }
         $hashedPassword = md5( sanitize_text_field( $password ) );
         if ( !empty( $downloadInfo['password'] ) ) {
             if ( empty( $password ) ) {
-                return new WP_Error('password_required', __( 'This shared link is protected by a password. Please provide the password to access the file.', 'integrate-dropbox' ));
+                return new WP_Error(401, __( 'This shared link is protected by a password. Please provide the password to access the file.', 'integrate-dropbox' ));
             }
             if ( $downloadInfo['password'] !== $hashedPassword ) {
-                return new WP_Error('invalid_password', __( 'The provided password is incorrect.', 'integrate-dropbox' ));
+                return new WP_Error(401, __( 'The provided password is incorrect.', 'integrate-dropbox' ));
             }
         }
         $downloadInfo['downloadCount'] = intval( $downloadInfo['downloadCount'] ?? 0 ) + 1;
@@ -1425,6 +1462,13 @@ class Files extends BaseModel {
             'createdAt'       => $file->createdAt,
             'updatedAt'       => $file->updatedAt,
         ];
+        $filter = array_merge( [
+            'parent'    => $file->path,
+            'accountId' => $file->accountId,
+        ], $filter ?? [] );
+        if ( $file->isDir ) {
+            $fileData['size'] = $this->countRecords( $filter );
+        }
         if ( $returnType === 'object' ) {
             return new File($fileData);
         } elseif ( $returnType === 'array' ) {
@@ -1502,3 +1546,5 @@ class Files extends BaseModel {
     }
 
 }
+
+// phpcs:disable WordPress.DB.DirectDatabaseQuery

@@ -86,7 +86,7 @@ trait Macroable
             throw new BadMethodCallException(sprintf(
                 'Method %s::%s does not exist.',
                 static::class,
-                $method
+                esc_html($method)
             ));
         }
 
@@ -114,7 +114,7 @@ trait Macroable
             throw new BadMethodCallException(sprintf(
                 'Method %s::%s does not exist.',
                 static::class,
-                $method
+                esc_html($method)
             ));
         }
 

@@ -86,7 +86,7 @@ class Stream implements StreamInterface
             if (\PHP_VERSION_ID  >= 70400) {
                 throw $e;
             }
-            trigger_error(sprintf('%s::__toString exception: %s', self::class, (string) $e), E_USER_ERROR);
+            trigger_error(sprintf('%s::__toString exception: %s', self::class, esc_html((string) $e)), E_USER_ERROR);
 
             return '';
         }
@@ -210,7 +210,7 @@ class Stream implements StreamInterface
         }
         if (fseek($this->stream, $offset, $whence) === -1) {
             throw new \RuntimeException('Unable to seek to stream position '
-                . $offset . ' with whence ' . var_export($whence, true));
+                . esc_html((string) $offset) . ' with whence ' . esc_html(var_export($whence, true)));
         }
     }
 
@@ -233,7 +233,7 @@ class Stream implements StreamInterface
         try {
             $string = fread($this->stream, $length);
         } catch (\Exception $e) {
-            throw new \RuntimeException('Unable to read from stream', 0, $e);
+            throw new \RuntimeException('Unable to read from stream', 0, $e); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
         }
 
         if (false === $string) {

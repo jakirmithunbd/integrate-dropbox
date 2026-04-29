@@ -255,7 +255,7 @@ class LazyCollection implements CanBeEscapedWhenCastToString, Enumerable
     public function containsStrict($key, $value = null)
     {
         if (func_num_args() === 2) {
-            return $this->contains(fn ($item) => data_get($item, $key) === $value);
+            return $this->contains(fn ($item) => ccpidb_data_get($item, $key) === $value);
         }
 
         if ($this->useAsCallable($key)) {
@@ -474,7 +474,7 @@ class LazyCollection implements CanBeEscapedWhenCastToString, Enumerable
 
         if (is_null($callback)) {
             if (! $iterator->valid()) {
-                return value($default);
+                return ccpidb_value($default);
             }
 
             return $iterator->current();
@@ -486,7 +486,7 @@ class LazyCollection implements CanBeEscapedWhenCastToString, Enumerable
             }
         }
 
-        return value($default);
+        return ccpidb_value($default);
     }
 
     /**
@@ -538,7 +538,7 @@ class LazyCollection implements CanBeEscapedWhenCastToString, Enumerable
     public function get($key, $default = null)
     {
         if (is_null($key)) {
-            return value($default);
+            return ccpidb_value($default);
         }
 
         foreach ($this as $outerKey => $outerValue) {
@@ -547,7 +547,7 @@ class LazyCollection implements CanBeEscapedWhenCastToString, Enumerable
             }
         }
 
-        return value($default);
+        return ccpidb_value($default);
     }
 
     /**
@@ -768,7 +768,7 @@ class LazyCollection implements CanBeEscapedWhenCastToString, Enumerable
             }
         }
 
-        return $needle === $placeholder ? value($default) : $needle;
+        return $needle === $placeholder ? ccpidb_value($default) : $needle;
     }
 
     /**
@@ -784,12 +784,12 @@ class LazyCollection implements CanBeEscapedWhenCastToString, Enumerable
             [$value, $key] = $this->explodePluckParameters($value, $key);
 
             foreach ($this as $item) {
-                $itemValue = data_get($item, $value);
+                $itemValue = ccpidb_data_get($item, $value);
 
                 if (is_null($key)) {
                     yield $itemValue;
                 } else {
-                    $itemKey = data_get($item, $key);
+                    $itemKey = ccpidb_data_get($item, $key);
 
                     if (is_object($itemKey) && method_exists($itemKey, '__toString')) {
                         $itemKey = (string) $itemKey;
@@ -902,7 +902,7 @@ class LazyCollection implements CanBeEscapedWhenCastToString, Enumerable
 
             foreach ($this as $key) {
                 if (! $values->valid()) {
-                    trigger_error($errorMessage, E_USER_WARNING);
+                    trigger_error(esc_html($errorMessage), E_USER_WARNING);
 
                     break;
                 }
@@ -913,7 +913,7 @@ class LazyCollection implements CanBeEscapedWhenCastToString, Enumerable
             }
 
             if ($values->valid()) {
-                trigger_error($errorMessage, E_USER_WARNING);
+                trigger_error(esc_html($errorMessage), E_USER_WARNING);
             }
         });
     }

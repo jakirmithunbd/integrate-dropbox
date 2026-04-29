@@ -27,7 +27,7 @@ class OpenSslRandomStringGenerator implements RandomStringGeneratorInterface
     {
         if (! function_exists('openssl_random_pseudo_bytes')) {
             throw new DropboxClientException(
-                static::ERROR_MESSAGE .
+                esc_html(static::ERROR_MESSAGE) .
                 'The function openssl_random_pseudo_bytes() does not exist.'
             );
         }
@@ -50,12 +50,12 @@ class OpenSslRandomStringGenerator implements RandomStringGeneratorInterface
 
         //Unable to create binary string
         if ($binaryString === false) {
-            throw new DropboxClientException(static::ERROR_MESSAGE . 'openssl_random_pseudo_bytes() returned an unknown error.');
+            throw new DropboxClientException(esc_html(static::ERROR_MESSAGE) . 'openssl_random_pseudo_bytes() returned an unknown error.');
         }
 
         //Binary String is not cryptographically strong
         if ($cryptoStrong !== true) {
-            throw new DropboxClientException(static::ERROR_MESSAGE . 'openssl_random_pseudo_bytes() returned a pseudo-random string but it was not cryptographically secure and cannot be used.');
+            throw new DropboxClientException(esc_html(static::ERROR_MESSAGE) . 'openssl_random_pseudo_bytes() returned a pseudo-random string but it was not cryptographically secure and cannot be used.');
         }
 
         //Convert binary to hex

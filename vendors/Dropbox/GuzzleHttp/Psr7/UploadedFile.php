@@ -184,7 +184,7 @@ class UploadedFile implements UploadedFileInterface
 
         if (false === $this->moved) {
             throw new RuntimeException(
-                sprintf('Uploaded file could not be moved to %s', $targetPath)
+                sprintf('Uploaded file could not be moved to %s', esc_html($targetPath))
             );
         }
     }

@@ -38,6 +38,8 @@ defined( 'ABSPATH' ) or exit( 'Hey, what are you doing here? You silly human!' )
  */
 class Update_1_3_0 {
     use Singleton;
+    // Migration file - direct database queries required for schema changes
+    // phpcs:disable WordPress.DB.DirectDatabaseQuery
     public const MIGRATION_KEYS = [
         'completed'         => 'ccpidb_update_1_3_0_completed',
         'shortcodes_table'  => 'ccpidb_shortcodes_table_migrated_1_3_0',
@@ -118,7 +120,7 @@ class Update_1_3_0 {
                 'type'    => 'error',
                 'message' => 'Update 1.3.0 Migration Error: ' . $e->getMessage(),
             ] );
-            return new WP_Error('update_failed', 'Update to version 1.3.0 failed: ' . $e->getMessage());
+            return new WP_Error(400, 'Update to version 1.3.0 failed: ' . $e->getMessage());
         }
     }
 
@@ -1477,13 +1479,17 @@ class Update_1_3_0 {
                 'post_status'    => 'inherit',
                 'posts_per_page' => $perPage,
                 'paged'          => $paged,
-                'meta_query'     => [[
-                    'key'     => '_indbox_media_folder_id',
-                    'compare' => 'EXISTS',
-                ], [
-                    'key'     => '_ccpidb_media_folder_path',
-                    'compare' => 'NOT EXISTS',
-                ]],
+                'meta_query'     => [
+                    // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+                    [
+                        'key'     => '_indbox_media_folder_id',
+                        'compare' => 'EXISTS',
+                    ],
+                    [
+                        'key'     => '_ccpidb_media_folder_path',
+                        'compare' => 'NOT EXISTS',
+                    ],
+                ],
                 'fields'         => 'ids',
             ]);
             if ( !$query->have_posts() ) {
@@ -1671,3 +1677,5 @@ class Update_1_3_0 {
     }
 
 }
+
+// phpcs:enable WordPress.DB.DirectDatabaseQuery

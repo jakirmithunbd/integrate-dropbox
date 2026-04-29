@@ -6,6 +6,7 @@ use CodeConfig\IDB\Utils\Helpers;
 
 defined('ABSPATH') || exit('No direct script access allowed');
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery
 class Deactivation
 {
     public static function init()
@@ -42,7 +43,12 @@ class Deactivation
 
         foreach ($tables as $table) {
             $tableName = "$wpdb->prefix{$table}";
-            $wpdb->query($wpdb->prepare("DROP TABLE IF EXISTS %i", $tableName));
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange
+            $table = $wpdb->query($wpdb->prepare("DROP TABLE IF EXISTS %i", $tableName));
+
+            if ($table === false) {
+                wp_cache_flush();
+            }
         }
     }
 
@@ -71,6 +77,7 @@ class Deactivation
         $pattern1 = $wpdb->esc_like('_transient_ccpidb_') . '%';
         $pattern2 = $wpdb->esc_like('_transient_timeout_ccpidb_') . '%';
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
         $wpdb->query($wpdb->prepare(
             "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
             $pattern1,
@@ -122,6 +129,7 @@ class Deactivation
         $pattern1 = $wpdb->esc_like('_transient_ccpidb_') . '%';
         $pattern2 = $wpdb->esc_like('_transient_timeout_ccpidb_') . '%';
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
         $wpdb->query($wpdb->prepare(
             "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
             $pattern1,
@@ -129,3 +137,5 @@ class Deactivation
         ));
     }
 }
+
+// phpcs:enable WordPress.DB.DirectDatabaseQuery

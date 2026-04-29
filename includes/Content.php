@@ -135,6 +135,20 @@ class Content
 
         $allowedExtensions = ['jpeg', 'png', 'webp'];
         $ext               = in_array($ext, $allowedExtensions, true) ? $ext : 'webp';
+        $isCacheable       = Helpers::getSetting('advanced.imageCaching', false);
+
+        if ($isCacheable) {
+            $cache         = new Cache();
+
+            $cachedFileRaw = $cache->getFileRaw($key, $size, $ext);
+            if ($cachedFileRaw) {
+                header("Cache-Control: max-age=" . MONTH_IN_SECONDS);
+                header("Content-Type: " . MimeTypeManager::getMimeType($ext));
+                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                echo $cachedFileRaw;
+                exit;
+            }
+        }
 
         $thumbnailData = App::getInstance()->getThumbnailData($key, $size, $ext);
         if (is_wp_error($thumbnailData)) {
@@ -174,6 +188,10 @@ class Content
             $this->safeRedirect($this->getUnknownIcon($file->getMimetype() ?? 'image/webp'), 0);
         }
 
+        if ($isCacheable) {
+            $cache->saveFile($thumbnailData['fileContents'], $key, $size, $ext);
+        }
+
         header("Cache-Control: max-age=" . MONTH_IN_SECONDS);
         header("Content-Type: " . MimeTypeManager::getMimeType($ext));
 
@@ -188,7 +206,7 @@ class Content
         if (MimeTypeManager::isVideo($ext) && Helpers::getSetting('advanced.secureVideoPlayback', false)) {
             $wp_referer = wp_get_referer();
             if (empty($wp_referer) || !str_contains($wp_referer, home_url())) {
-                $this->denyAccess('Direct access to video preview is denied.', 403);
+                $this->denyAccess('Direct access to video preview is denied.', 'Please access the video through the provided links on your website.', 'error');
             }
         }
 
@@ -533,9 +551,13 @@ class Content
         exit;
     }
 
-    private function denyAccess(string $message = 'Access denied!', int $status = 403): void
+    private function denyAccess(string $message = 'Access denied!', string $description = 'You do not have permission to access this file.', string $cardStatus = 'error'): void
     {
-        wp_die(esc_html($message), 'Invalid Request', ['response' => intval($status)]);
+        ccpidbGetTemplate('notice-card/permission-denied', [
+            'title'       => $message,
+            'description' => esc_html($description),
+            'card_status' => $cardStatus,
+        ]);
         exit;
     }
 

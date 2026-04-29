@@ -82,7 +82,7 @@ class Uri implements UriInterface, \JsonSerializable
         if ($uri !== '') {
             $parts = self::parse($uri);
             if ($parts === false) {
-                throw new MalformedUriException("Unable to parse URI: $uri");
+                throw new MalformedUriException("Unable to parse URI: " . esc_html($uri)); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
             }
             $this->applyParts($parts);
         }
@@ -279,7 +279,7 @@ class Uri implements UriInterface, \JsonSerializable
      *
      * @see https://datatracker.ietf.org/doc/html/rfc3986#section-4.4
      */
-    public static function isSameDocumentReference(UriInterface $uri, UriInterface $base = null): bool
+    public static function isSameDocumentReference(UriInterface $uri, ?UriInterface $base = null): bool
     {
         if ($base !== null) {
             $uri = UriResolver::resolve($base, $uri);
@@ -630,7 +630,7 @@ class Uri implements UriInterface, \JsonSerializable
         $port = (int) $port;
         if (0 > $port || 0xFFFF < $port) {
             throw new \InvalidArgumentException(
-                sprintf('Invalid port: %d. Must be between 0 and 65535', $port)
+                sprintf('Invalid port: %d. Must be between 0 and 65535', intval($port))
             );
         }
 

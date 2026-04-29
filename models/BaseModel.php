@@ -2,6 +2,10 @@
 
 namespace CodeConfig\IDB\Models;
 
+defined('ABSPATH') || exit('No direct script access allowed');
+
+// phpcs:disable WordPress.DB.DirectDatabaseQuery
+
 use Exception;
 
 use function is_array;
@@ -212,41 +216,79 @@ abstract class BaseModel
     // CORE CRUD OPERATIONS
     // ========================================
 
-    /**
-     * Count total records in the table with optional conditions
-     *
-     * @param string $whereCondition Optional WHERE conditions (without WHERE keyword)
-     * @param array $conditionData Values for prepared statement placeholders
-     * @return int|WP_Error Number of records or error
-     */
-    public function countRecords($whereCondition = '', $conditionData = [])
+    public function countRecords($config = [])
     {
-        if (!empty($whereCondition) && empty($conditionData)) {
-            return $this->createValidationError('Condition data cannot be empty when using WHERE conditions.');
+
+        $availableKeys = [
+            'accounts'    => ['userId', 'lost', 'emailVerified', 'disabled', 'country', 'location', 'local', 'type', 'isPaired', 'isTeam'],
+            'shortcodes'  => ['type', 'status', 'title'],
+            'files'       => ['parent', 'accountId', 'mimeType', 'extension', 'isDir'],
+            'logs'        => ['moduleId', 'userId', 'fileKey', 'fileName', 'page', 'type', 'title', 'status'],
+            'user_access' => ['type'],
+        ];
+
+        global $wpdb;
+        $sql = $wpdb->prepare("SELECT COUNT(*) FROM %i WHERE 1=1", $this->tableName);
+
+        $tablePrefix = $wpdb->prefix . 'ccpidb_';
+        $tableName   = str_replace($tablePrefix, '', $this->tableName);
+
+        if ($availableKeys[$tableName] ?? false) {
+            $validKeys = array_intersect_key($config, array_flip($availableKeys[$tableName]));
+            foreach ($validKeys as $key => $value) {
+                if ($value !== 'all') {
+                    if (is_array($value) && !empty($value)) {
+                        $placeholders = implode(', ', array_fill(0, count($value), '%s'));
+                        $sql .= $wpdb->prepare(" AND %i IN ($placeholders)", array_merge([$key], $value));
+                    } elseif (!empty($value)) {
+                        $sql .= $wpdb->prepare(" AND %i = %s", $key, $value);
+                    }
+                }
+            }
         }
 
-        $sql    = "SELECT COUNT(*) FROM {$this->tableName}";
-        $params = [];
+        $search = $config['search'] ?? '';
 
-        if (!empty($whereCondition)) {
-            $sql .= " WHERE {$whereCondition}";
-            $params = $conditionData;
+        if (!empty($search)) {
+            $sql .= $wpdb->prepare(" AND title LIKE %s", "%$search%");
         }
 
-        if (!empty($params)) {
-            // Ensure numeric array for spread operator to prevent "Cannot unpack array with string keys" error
-            $params = array_values($params);
-            $result = $this->database->get_var($this->database->prepare($sql, ...$params));
-        } else {
-            $result = $this->database->get_var($sql);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+        $result = $wpdb->get_var($sql);
+        if (is_wp_error($result)) {
+            return 0;
         }
 
-        if ($this->database->last_error) {
-            return $this->createDatabaseError($this->database->last_error);
-        }
-
-        return (int) $result;
+        return $result;
     }
+
+    // /**
+    //  * Count total records in the table with optional conditions
+    //  *
+    //  * @param string $whereCondition Optional WHERE conditions (without WHERE keyword)
+    //  * @param array $conditionData Values for prepared statement placeholders
+    //  * @return int|WP_Error Number of records or error
+    //  */
+    // public function countRecords($whereCondition = '', $conditionData = [])
+    // {
+    //     if (!empty($whereCondition) && empty($conditionData)) {
+    //         return $this->createValidationError('Condition data cannot be empty when using WHERE conditions.');
+    //     }
+
+    //     $sql    = $this->database->prepare("SELECT COUNT(*) FROM %i", $this->tableName);
+
+    //     if (!empty($whereCondition)) {
+    //         $sql .= $this->database->prepare(" WHERE %i = %s", $whereCondition, $conditionData);
+    //     }
+
+    //     // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+    //     $result = $this->database->get_var($sql);
+    //     if ($this->database->last_error) {
+    //         return $this->createDatabaseError($this->database->last_error);
+    //     }
+
+    //     return (int) $result;
+    // }
 
     /**
      * Create a new record in the database
@@ -887,3 +929,5 @@ abstract class BaseModel
         return $result !== false;
     }
 }
+
+// phpcs:enable WordPress.DB.DirectDatabaseQuery

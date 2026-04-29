@@ -274,7 +274,7 @@ EOT
     {
         $data = \json_decode($json, $assoc, $depth, $options);
         if (\JSON_ERROR_NONE  !== \json_last_error()) {
-            throw new InvalidArgumentException('json_decode error: ' . \json_last_error_msg());
+            throw new InvalidArgumentException('json_decode error: ' . esc_html(\json_last_error_msg()));
         }
 
         return $data;
@@ -295,7 +295,7 @@ EOT
     {
         $json = \json_encode($value, $options, $depth);
         if (\JSON_ERROR_NONE  !== \json_last_error()) {
-            throw new InvalidArgumentException('json_encode error: ' . \json_last_error_msg());
+            throw new InvalidArgumentException('json_encode error: ' . esc_html(\json_last_error_msg()));
         }
 
         /** @var string */
@@ -343,7 +343,7 @@ EOT
                     $errorMessage .= ' (errors: ' . implode(', ', $errors) . ')';
                 }
 
-                throw new InvalidArgumentException($errorMessage);
+                throw new InvalidArgumentException(esc_html($errorMessage));
             }
             if ($uri->getHost() !== $asciiHost) {
                 // Replace URI only if the ASCII version is different

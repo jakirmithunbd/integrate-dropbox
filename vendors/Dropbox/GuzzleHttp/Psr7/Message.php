@@ -231,7 +231,7 @@ final class Message
         // the space between status-code and reason-phrase is required. But
         // browsers accept responses without space and reason as well.
         if (! preg_match('/^HTTP\/.* [0-9]{3}( .*|$)/', $data['start-line'])) {
-            throw new \InvalidArgumentException('Invalid response string: ' . $data['start-line']);
+            throw new \InvalidArgumentException('Invalid response string: ' . esc_html($data['start-line']));
         }
         $parts = explode(' ', $data['start-line'], 3);
 
@@ -240,7 +240,7 @@ final class Message
             $data['headers'],
             $data['body'],
             explode('/', $parts[0])[1],
-            isset($parts[2]) ? $parts[2] : null
+            isset($parts[2]) ? esc_html($parts[2]) : null
         );
     }
 }

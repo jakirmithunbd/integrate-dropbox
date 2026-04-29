@@ -27,7 +27,7 @@ class McryptRandomStringGenerator implements RandomStringGeneratorInterface
     {
         if (! function_exists('mcrypt_create_iv')) {
             throw new DropboxClientException(
-                static::ERROR_MESSAGE .
+                esc_html(static::ERROR_MESSAGE) .
                 'The function mcrypt_create_iv() does not exist.'
             );
         }
@@ -47,25 +47,32 @@ class McryptRandomStringGenerator implements RandomStringGeneratorInterface
 
         if (!function_exists('mcrypt_create_iv')) {
             throw new DropboxClientException(
-                static::ERROR_MESSAGE .
+                esc_html(static::ERROR_MESSAGE) .
                 'The function mcrypt_create_iv() does not exist.'
             );
         }
 
         if (!defined('MCRYPT_DEV_URANDOM')) {
             throw new DropboxClientException(
-                static::ERROR_MESSAGE .
+                esc_html(static::ERROR_MESSAGE) .
                 'The constant MCRYPT_DEV_URANDOM is not defined.'
             );
         }
 
         //Create Binary String
-        $binaryString = mcrypt_create_iv($length, MCRYPT_DEV_URANDOM);
+        if (function_exists('mcrypt_create_iv') && defined('MCRYPT_DEV_URANDOM')) {
+            $binaryString = mcrypt_create_iv($length, MCRYPT_DEV_URANDOM);
+        } else {
+            throw new DropboxClientException(
+                esc_html(static::ERROR_MESSAGE) .
+                'The function mcrypt_create_iv() or the constant MCRYPT_DEV_URANDOM is not available.'
+            );
+        }
 
         //Unable to create binary string
         if ($binaryString === false) {
             throw new DropboxClientException(
-                static::ERROR_MESSAGE .
+                esc_html(static::ERROR_MESSAGE) .
                 'mcrypt_create_iv() returned an error.'
             );
         }

@@ -57,6 +57,7 @@ class Schedule
         $apiCache  = [];
 
         while (true) {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $rows = $wpdb->get_results(
                 $wpdb->prepare(
                     "

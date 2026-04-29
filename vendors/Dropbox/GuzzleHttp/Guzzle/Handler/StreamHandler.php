@@ -83,8 +83,8 @@ class StreamHandler
         array $options,
         RequestInterface $request,
         ?float $startTime,
-        ResponseInterface $response = null,
-        \Throwable $error = null
+        ?ResponseInterface $response = null,
+        ?\Throwable $error = null
     ): void {
         if (isset($options['on_stats'])) {
             $stats = new TransferStats($request, $response, Utils::currentTime() - $startTime, $error, []);
@@ -251,7 +251,7 @@ class StreamHandler
                     $message .= "[$key] $value" . \PHP_EOL;
                 }
             }
-            throw new \RuntimeException(\trim($message));
+            throw new \RuntimeException(esc_html(trim($message)));
         }
 
         return $resource;
@@ -268,7 +268,7 @@ class StreamHandler
         }
 
         if (! \in_array($request->getUri()->getScheme(), ['http', 'https'])) {
-            throw new RequestException(\sprintf("The scheme '%s' is not supported.", $request->getUri()->getScheme()), $request);
+            throw new RequestException(\sprintf("The scheme '%s' is not supported.", esc_html($request->getUri()->getScheme())), $request); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
         }
 
         // HTTP/1.1 streams using the PHP stream wrapper require a
@@ -326,7 +326,7 @@ class StreamHandler
                 $this->lastHeaders = isset($http_response_header) ? $http_response_header : [];
 
                 if (false === $resource) {
-                    throw new ConnectException(sprintf('Connection refused for URI %s', $uri), $request, null, $context);
+                    throw new ConnectException(sprintf('Connection refused for URI %s', esc_html((string) $uri)), $request, null, $context); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
                 }
 
                 if (isset($options['read_timeout'])) {
@@ -349,7 +349,7 @@ class StreamHandler
             if ('v4' === $options['force_ip_resolve']) {
                 $records = \dns_get_record($uri->getHost(), \DNS_A);
                 if (false === $records || ! isset($records[0]['ip'])) {
-                    throw new ConnectException(\sprintf("Could not resolve IPv4 address for host '%s'", $uri->getHost()), $request);
+                    throw new ConnectException(\sprintf("Could not resolve IPv4 address for host '%s'", esc_html($uri->getHost())), $request); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
                 }
 
                 return $uri->withHost($records[0]['ip']);
@@ -357,7 +357,7 @@ class StreamHandler
             if ('v6' === $options['force_ip_resolve']) {
                 $records = \dns_get_record($uri->getHost(), \DNS_AAAA);
                 if (false === $records || ! isset($records[0]['ipv6'])) {
-                    throw new ConnectException(\sprintf("Could not resolve IPv6 address for host '%s'", $uri->getHost()), $request);
+                    throw new ConnectException(\sprintf("Could not resolve IPv6 address for host '%s'", esc_html($uri->getHost())), $request); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
                 }
 
                 return $uri->withHost('[' . $records[0]['ipv6'] . ']');
@@ -509,7 +509,7 @@ class StreamHandler
         if (\is_string($value)) {
             $options['ssl']['cafile'] = $value;
             if (! \file_exists($value)) {
-                throw new \RuntimeException("SSL CA bundle not found: $value");
+                throw new \RuntimeException(sprintf("SSL certificate not found: %s", esc_html($value)));
             }
         } elseif ($value !== true) {
             throw new \InvalidArgumentException('Invalid verify request option');
@@ -531,7 +531,7 @@ class StreamHandler
         }
 
         if (! \file_exists($value)) {
-            throw new \RuntimeException("SSL certificate not found: {$value}");
+            throw new \RuntimeException(sprintf("SSL certificate not found: %s", esc_html($value)));
         }
 
         $options['ssl']['local_cert'] = $value;

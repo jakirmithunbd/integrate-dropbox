@@ -162,7 +162,7 @@ class Files extends API
             return $files;
 
         } catch (Exception $th) {
-            return new WP_Error('get_folder_error', $th->getMessage());
+            return new WP_Error(401, $th->getMessage());
         }
     }
 
@@ -178,7 +178,7 @@ class Files extends API
                 return self::getFile($folderPath);
             }
 
-            return new WP_Error('create_folder_error', esc_html__('Failed to create folder: ', 'integrate-dropbox') . $ex->getMessage());
+            return new WP_Error(401, esc_html__('Failed to create folder: ', 'integrate-dropbox') . $ex->getMessage());
         }
 
         return $newFile;
@@ -187,13 +187,13 @@ class Files extends API
     public function deleteFiles(array $filePaths)
     {
         if (empty($filePaths)) {
-            return new WP_Error('no_file_paths', __('No file paths provided for deletion.', 'integrate-dropbox'));
+            return new WP_Error(401, __('No file paths provided for deletion.', 'integrate-dropbox'));
         }
 
         $filteredPaths = array_filter(array_map(fn ($p) => ['path' => trim($p)], $filePaths), fn ($item) => !empty($item['path']));
 
         if (empty($filteredPaths)) {
-            return new WP_Error('invalid_file_paths', __('No valid file paths to delete.', 'integrate-dropbox'));
+            return new WP_Error(401, __('No valid file paths to delete.', 'integrate-dropbox'));
         }
 
         try {
@@ -256,7 +256,7 @@ class Files extends API
 
             return $file->getData();
         } catch (Exception $ex) {
-            return new WP_Error('direct_upload_file_error', esc_html__('Failed to upload file: ', 'integrate-dropbox') . $ex->getMessage());
+            return new WP_Error(401, esc_html__('Failed to upload file: ', 'integrate-dropbox') . $ex->getMessage());
         }
     }
 
@@ -272,7 +272,7 @@ class Files extends API
 
             return  $apiResult->getLink();
         } catch (Exception $ex) {
-            return new WP_Error('upload_file_error', esc_html__('Failed to upload file: ', 'integrate-dropbox') . $ex->getMessage());
+            return new WP_Error(401, esc_html__('Failed to upload file: ', 'integrate-dropbox') . $ex->getMessage());
         }
     }
 
@@ -314,7 +314,7 @@ class Files extends API
             }
 
         } catch (Exception $ex) {
-            return new WP_Error('move_file_error', esc_html__('Failed to move file: ', 'integrate-dropbox') . $ex->getMessage());
+            return new WP_Error(401, esc_html__('Failed to move file: ', 'integrate-dropbox') . $ex->getMessage());
         }
 
         return $files;
@@ -343,7 +343,7 @@ class Files extends API
         }
 
         if (empty($filterPaths)) {
-            return new WP_Error('no_valid_paths', 'No valid from_path and to_path provided for copying.');
+            return new WP_Error(401, 'No valid from_path and to_path provided for copying.');
         }
 
         $files       = [];
@@ -362,7 +362,7 @@ class Files extends API
                 $files[$newFile->getId()] = $newFile->getData();
             }
         } catch (Exception $ex) {
-            return new WP_Error('copy_file_error', esc_html__('Failed to copy file: ', 'integrate-dropbox') . $ex->getMessage());
+            return new WP_Error(401, esc_html__('Failed to copy file: ', 'integrate-dropbox') . $ex->getMessage());
         }
 
         return $files;
@@ -381,7 +381,7 @@ class Files extends API
 
             $file    = new File($apiFile->getFileData(['accountId' => $this->accountId, 'update' => true]));
         } catch (Exception $ex) {
-            return new WP_Error('rename_file_error', esc_html__('Failed to rename file: ', 'integrate-dropbox') . $ex->getMessage());
+            return new WP_Error(401, esc_html__('Failed to rename file: ', 'integrate-dropbox') . $ex->getMessage());
         }
 
         return $file;
@@ -409,7 +409,7 @@ class Files extends API
                 $apiFiles    = array_merge($apiFiles, $result->getItems()->toArray());
             }
         } catch (Exception $ex) {
-            return new WP_Error('search_file_error', esc_html__('Failed to search file: ', 'integrate-dropbox') . $ex->getMessage());
+            return new WP_Error(401, esc_html__('Failed to search file: ', 'integrate-dropbox') . $ex->getMessage());
         }
 
         $searchFiles = [];
@@ -434,7 +434,7 @@ class Files extends API
 
             return $response->getContents();
         } catch (Exception $e) {
-            return new WP_Error('preview_error', $e->getMessage());
+            return new WP_Error(401, $e->getMessage());
         }
     }
 
@@ -447,7 +447,7 @@ class Files extends API
 
             return $response->getLink();
         } catch (Exception $e) {
-            return new WP_Error('temporary_link_error', $e->getMessage());
+            return new WP_Error(401, $e->getMessage());
         }
     }
 
@@ -470,7 +470,7 @@ class Files extends API
 
             // return $response->getItems()[0]->getUrl();
         } catch (Exception $e) {
-            return new WP_Error('share_link_error', $e->getMessage());
+            return new WP_Error(401, $e->getMessage());
         }
     }
 
@@ -490,7 +490,7 @@ class Files extends API
 
             return $response->getLink();
         } catch (Exception $e) {
-            return new WP_Error('temporary_download_link_error', $e->getMessage());
+            return new WP_Error(401, $e->getMessage());
         }
     }
 
@@ -534,7 +534,7 @@ class Files extends API
         } catch (DropboxClientException $ex) {
 
             if (!$this->isSharedLinkAlreadyExistsError($ex)) {
-                return new WP_Error('create_shared_link_error', $ex->getMessage());
+                return new WP_Error(401, $ex->getMessage());
             }
 
             return $this->getOrFixExistingSharedLink($dropbox, $path);
@@ -567,7 +567,7 @@ class Files extends API
                 return $link->getUrl();
             }
         }
-        
+
         try {
             $response = $dropbox->modifySharedLinkWithSettings($links[0]->getUrl());
 
@@ -600,7 +600,7 @@ class Files extends API
 
             return $response->getContents();
         } catch (Exception $e) {
-            return new WP_Error('get_thumbnail_error', $e->getMessage());
+            return new WP_Error(401, $e->getMessage());
         }
     }
 
@@ -620,7 +620,7 @@ class Files extends API
 
             return $response;
         } catch (Exception $e) {
-            return new WP_Error('get_thumbnails_error', $e->getMessage());
+            return new WP_Error(401, $e->getMessage());
         }
     }
 
@@ -632,7 +632,7 @@ class Files extends API
 
             return $sessionId;
         } catch (Exception $e) {
-            return new WP_Error('upload_session_start_error', $e->getMessage());
+            return new WP_Error(401, $e->getMessage());
         }
     }
 
@@ -644,7 +644,7 @@ class Files extends API
 
             return $sessionId;
         } catch (Exception $e) {
-            return new WP_Error('append_upload_session_error', $e->getMessage());
+            return new WP_Error(401, $e->getMessage());
         }
     }
 
@@ -661,7 +661,7 @@ class Files extends API
 
             return $newFile->getData();
         } catch (Exception $e) {
-            return new WP_Error('finish_upload_session_error', $e->getMessage());
+            return new WP_Error(401, $e->getMessage());
         }
     }
 }

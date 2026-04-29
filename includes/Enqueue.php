@@ -226,6 +226,7 @@ class Enqueue
      */
     public function common_scripts(string $hook, string $context = 'admin'): void
     {
+        $this->script('frontend-global', ['jquery', 'ccpidb-runtime']);
         $this->r_style('common', [], ['priority' => 5]);
 
         $customCss  = Helpers::getSetting('appearance.customCSS', '');
@@ -402,10 +403,11 @@ class Enqueue
                 'username'             => wp_get_current_user()->user_login,
                 'roles'                => wp_get_current_user()->roles ?? ['subscriber'],
                 'can'                  => [
-                    'manageSettings'           => ccpidbHasUserAccessPage('settings'),
-                    'manageFileBrowser'        => ccpidbHasUserAccessPage('accounts'),
-                    'manageModuleBuilder'      => ccpidbHasUserAccessPage('module_builder'),
-                    'manageMediaLibrary'       => ccpidbHasUserAccessPage('media_library'),
+                    'manageSettings'            => ccpidbHasUserAccessPage('settings'),
+                    'manageFileBrowser'         => ccpidbHasUserAccessPage('accounts'),
+                    'manageModuleBuilder'       => ccpidbHasUserAccessPage('module_builder'),
+                    'manageMediaLibrary'        => ccpidbHasUserAccessPage('media_library'),
+                    'hasFullAccess'             => ccpidbGetCurrentUserAccess() === 'true',
                 ]
             ];
         }

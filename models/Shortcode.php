@@ -15,6 +15,7 @@ use function is_array;
 use function is_string;
 use WP_Error;
 defined( 'ABSPATH' ) || exit( 'No direct script access allowed' );
+// phpcs:disable WordPress.DB.DirectDatabaseQuery
 class Shortcode extends BaseModel {
     use Singleton;
     public function __construct() {
@@ -31,17 +32,20 @@ class Shortcode extends BaseModel {
         if ( empty( $id ) ) {
             return new WP_Error(404, __( 'Shortcode ID is required.', 'integrate-dropbox' ));
         }
-        $cacheKey = "ccpidb_shortcode_{$id}_" . md5( serialize( $config ) );
-        $cacheData = wp_cache_get( $cacheKey, 'ccpidb_shortcodes_processed' );
+        $cacheKey = "ccpidb_shortcode__{$id}__" . md5( serialize( $config ) );
+        $cacheData = wp_cache_get( $cacheKey, "ccpidb_shortcode__{$id}" );
         if ( $cacheData !== false ) {
             return $cacheData;
         }
-        $shortcode = $this->fetchShortcode( $id );
-        if ( is_wp_error( $shortcode ) ) {
-            return $shortcode;
+        global $wpdb;
+        $shortcode = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM %i WHERE id = %d", $this->tableName, $id ), ARRAY_A );
+        if ( empty( $shortcode ) ) {
+            return new WP_Error(404, __( 'Shortcode not found.', 'integrate-dropbox' ), [
+                'status' => 404,
+            ]);
         }
         $processed = $this->processData( $shortcode, $config );
-        wp_cache_set( $cacheKey, $processed, 'ccpidb_shortcodes_processed' );
+        wp_cache_set( $cacheKey, $processed, "ccpidb_shortcode__{$id}" );
         return $processed;
     }
 
@@ -57,6 +61,11 @@ class Shortcode extends BaseModel {
             'perPage' => 10,
         ];
         $config = array_merge( $defaults, $config );
+        $cacheKey = 'ccpidb_shortcodes__' . md5( serialize( $config ) );
+        $cacheData = wp_cache_get( $cacheKey, 'ccpidb_shortcodes' );
+        if ( $cacheData !== false ) {
+            return $cacheData;
+        }
         $allowedOrderBy = [
             'title',
             'type',
@@ -98,12 +107,13 @@ class Shortcode extends BaseModel {
                 'validateSchema' => false,
             ] );
         }
+        wp_cache_set( $cacheKey, $processData, 'ccpidb_shortcodes' );
         return $processData;
     }
 
     public function add( array $data, $force = false ) {
         if ( !in_array( $data['type'], IDBShortcode::getModulesList() ) ) {
-            return new WP_Error('invalid_type', __( 'Invalid shortcode type.', 'integrate-dropbox' ), [
+            return new WP_Error(401, __( 'Invalid shortcode type.', 'integrate-dropbox' ), [
                 'status' => 400,
             ]);
         }
@@ -121,6 +131,7 @@ class Shortcode extends BaseModel {
         if ( !empty( $data['locations'] ) && is_array( $data['locations'] ) ) {
             $data['locations'] = maybe_serialize( $data['locations'] );
         }
+        global $wpdb;
         if ( $is_update ) {
             $id = (int) $data['id'];
             unset($data['id'], $data['createdAt']);
@@ -130,27 +141,32 @@ class Shortcode extends BaseModel {
             $data['updatedAt'] = $now;
             $format = $this->generateFormat( $data );
             $where_format = ['%d'];
-            $result = $this->updateRecords(
+            $result = $wpdb->update(
+                $this->tableName,
                 $data,
                 [
                     'id' => $id,
                 ],
                 $format,
-                $where_format,
-                ARRAY_A
+                $where_format
             );
-            if ( is_wp_error( $result ) ) {
-                return $result;
+            if ( $result === false ) {
+                return new WP_Error(400, __( 'Failed to update shortcode.', 'integrate-dropbox' ), [
+                    'status' => 500,
+                ]);
             }
-            return $this->processData( $result );
+            wp_cache_flush_group( "ccpidb_shortcode__{$id}" );
+            wp_cache_flush_group( "ccpidb_shortcodes" );
+            $shortcode = $this->getShortcode( $id );
+            return $this->processData( $shortcode );
         } else {
             if ( empty( $data['type'] ) ) {
-                return new WP_Error('missing_type', __( 'Shortcode type is required.', 'integrate-dropbox' ), [
+                return new WP_Error(401, __( 'Shortcode type is required.', 'integrate-dropbox' ), [
                     'status' => 400,
                 ]);
             }
             if ( empty( $data['data'] ) ) {
-                return new WP_Error('missing_data', __( 'Shortcode data is required.', 'integrate-dropbox' ), [
+                return new WP_Error(401, __( 'Shortcode data is required.', 'integrate-dropbox' ), [
                     'status' => 400,
                 ]);
             }
@@ -160,11 +176,15 @@ class Shortcode extends BaseModel {
             $data['createdAt'] = $now;
             $data['updatedAt'] = $now;
             $format = $this->generateFormat( $data );
-            $inserted = $this->createRecord( $data, $format, ARRAY_A );
-            if ( is_wp_error( $inserted ) ) {
-                return $inserted;
+            $inserted = $wpdb->insert( $this->tableName, $data, $format );
+            if ( $inserted === false ) {
+                return new WP_Error(401, __( 'Failed to insert shortcode.', 'integrate-dropbox' ), [
+                    'status' => 500,
+                ]);
             }
-            return $this->processData( $inserted );
+            $id = (int) $wpdb->insert_id;
+            wp_cache_flush_group( "ccpidb_shortcodes" );
+            return $this->processData( $this->getShortcode( $id ) );
         }
     }
 
@@ -190,13 +210,24 @@ class Shortcode extends BaseModel {
 
     public function getShortcode( int $id, string $key = '' ) {
         if ( empty( $id ) ) {
-            return new WP_Error('invalid_id', __( 'Invalid ID provided.', 'integrate-dropbox' ), [
+            return new WP_Error(403, __( 'Invalid ID provided.', 'integrate-dropbox' ), [
                 'status' => 404,
             ]);
         }
-        $shortcode = $this->fetchShortcode( $id );
+        $cacheKey = "ccpidb_shortcode__{$id}__{$key}";
+        $cacheData = wp_cache_get( $cacheKey, "ccpidb_shortcode__{$id}" );
+        if ( $cacheData !== false ) {
+            return $cacheData;
+        }
+        global $wpdb;
+        $shortcode = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM %i WHERE id = %d", $this->tableName, $id ), ARRAY_A );
         if ( is_wp_error( $shortcode ) ) {
             return $shortcode;
+        }
+        if ( empty( $shortcode ) ) {
+            return new WP_Error(404, __( 'Shortcode not found.', 'integrate-dropbox' ), [
+                'status' => 404,
+            ]);
         }
         if ( isset( $shortcode['data'] ) && is_serialized( $shortcode['data'] ) ) {
             $shortcode['data'] = maybe_unserialize( $shortcode['data'] );
@@ -213,9 +244,14 @@ class Shortcode extends BaseModel {
                 }
                 $value = $value[$innerKey];
             }
+            wp_cache_set( $cacheKey, $value, "ccpidb_shortcode__{$id}" );
             return $value;
         }
-        return $shortcode[$key] ?? null;
+        $result = $shortcode[$key] ?? null;
+        if ( !empty( $result ) ) {
+            wp_cache_set( $cacheKey, $result, "ccpidb_shortcode__{$id}" );
+        }
+        return $result;
     }
 
     /**
@@ -233,26 +269,28 @@ class Shortcode extends BaseModel {
         }
         foreach ( $ids as $id ) {
             if ( !is_numeric( $id ) ) {
-                return new WP_Error('invalid_id', __( 'Invalid ID provided.', 'integrate-dropbox' ), [
+                return new WP_Error(403, __( 'Invalid ID provided.', 'integrate-dropbox' ), [
                     'status' => 400,
                 ]);
             }
         }
         $success_count = 0;
-        $total_count = count( $ids );
+        global $wpdb;
         foreach ( $ids as $id ) {
-            $result = $this->deleteRecords( [
+            $result = $wpdb->delete( $this->tableName, [
                 'id' => (int) $id,
             ], ['%d'] );
-            if ( !is_wp_error( $result ) && $result ) {
+            if ( $result !== false ) {
+                wp_cache_flush_group( "ccpidb_shortcode__{$id}" );
                 $success_count++;
             }
         }
         if ( $success_count === 0 ) {
-            return new WP_Error('delete_failed', __( 'Failed to delete any shortcodes.', 'integrate-dropbox' ), [
+            return new WP_Error(401, __( 'Failed to delete any shortcodes.', 'integrate-dropbox' ), [
                 'status' => 500,
             ]);
         }
+        wp_cache_flush_group( "ccpidb_shortcodes" );
         return $success_count;
     }
 
@@ -261,20 +299,20 @@ class Shortcode extends BaseModel {
             $ids = [$ids];
         }
         if ( empty( $ids ) ) {
-            return new WP_Error('invalid_id', __( 'Invalid ID provided.', 'integrate-dropbox' ), [
+            return new WP_Error(403, __( 'Invalid ID provided.', 'integrate-dropbox' ), [
                 'status' => 404,
             ]);
         }
         foreach ( $ids as $id ) {
             if ( !is_numeric( $id ) ) {
-                return new WP_Error('invalid_id', __( 'Invalid ID provided.', 'integrate-dropbox' ), [
+                return new WP_Error(403, __( 'Invalid ID provided.', 'integrate-dropbox' ), [
                     'status' => 404,
                 ]);
             }
         }
         $shortcodes = [];
         foreach ( $ids as $id ) {
-            $shortcode = $this->findSingleRecord( "SELECT * FROM {$this->tableName} WHERE id = %d", [(int) $id] );
+            $shortcode = $this->getShortcode( $id );
             if ( is_wp_error( $shortcode ) ) {
                 return $shortcode;
             }
@@ -283,10 +321,11 @@ class Shortcode extends BaseModel {
             }
         }
         if ( empty( $shortcodes ) ) {
-            return new WP_Error('not_found', __( 'Shortcode not found.', 'integrate-dropbox' ), [
+            return new WP_Error(404, __( 'Shortcode not found.', 'integrate-dropbox' ), [
                 'status' => 404,
             ]);
         }
+        global $wpdb;
         $results = 0;
         foreach ( $shortcodes as $shortcode ) {
             $shortcode['title'] .= ' - Copy';
@@ -294,70 +333,16 @@ class Shortcode extends BaseModel {
             unset($shortcode['id']);
             $shortcode['createdAt'] = current_time( 'mysql' );
             $shortcode['updatedAt'] = current_time( 'mysql' );
-            $result = $this->createRecord( $shortcode, $this->generateFormat( $shortcode ) );
-            if ( is_wp_error( $result ) ) {
-                return $result;
+            $result = $wpdb->insert( $this->tableName, $shortcode, $this->generateFormat( $shortcode ) );
+            if ( $result === false ) {
+                return new WP_Error(401, __( 'Failed to insert shortcode.', 'integrate-dropbox' ), [
+                    'status' => 500,
+                ]);
             }
             $results++;
         }
+        wp_cache_flush_group( "ccpidb_shortcodes" );
         return $results;
-    }
-
-    public function totalCount( $config = [] ) {
-        $defaultConfig = [
-            'type'   => 'all',
-            'search' => '',
-            'status' => 'all',
-        ];
-        $config = wp_parse_args( $config, $defaultConfig );
-        $type = $config['type'];
-        $search = $config['search'];
-        $status = $config['status'];
-        $where = [
-            '1' => '1',
-        ];
-        $format = [];
-        if ( $type !== 'all' ) {
-            $where['type'] = $type;
-            $format[] = '%s';
-        }
-        if ( $status !== 'all' ) {
-            $where['status'] = $status;
-            $format[] = '%s';
-        }
-        // $sql = "SELECT COUNT(*) FROM {$this->tableName}";
-        $conditions = [];
-        $params = [];
-        if ( count( $where ) > 1 ) {
-            // $conditions = [];
-            foreach ( $where as $key => $value ) {
-                if ( $key === '1' ) {
-                    continue;
-                }
-                $conditions[] = "{$key} = %s";
-                $params[] = $value;
-            }
-            // if (!empty($conditions)) {
-            // $condition .= implode(' AND ', $conditions);
-            // $sql .= " WHERE " . implode(' AND ', $conditions);
-            // }
-        }
-        if ( !empty( $search ) ) {
-            $conditions[] = "title LIKE %s";
-            $params[] = "%{$search}%";
-        }
-        $sql = implode( " AND ", $conditions );
-        $result = $this->countRecords( $sql, $params );
-        return $result;
-        // if (!empty($values)) {
-        //     $count = $this->wpdb->get_var($this->wpdb->prepare($sql, $values));
-        // } else {
-        //     $count = $this->wpdb->get_var($sql);
-        // }
-        // if ($this->wpdb->last_error) {
-        //     return new WP_Error(400, __('A database error occurred: ', 'integrate-dropbox') . $this->wpdb->last_error);
-        // }
-        // return (int) $count;
     }
 
     public function import( $shortcodesData ) {
@@ -382,6 +367,7 @@ class Shortcode extends BaseModel {
             }
             $importedCount++;
         }
+        wp_cache_flush_group( "ccpidb_shortcodes" );
         return $importedCount;
     }
 
@@ -463,10 +449,18 @@ class Shortcode extends BaseModel {
      * @return bool|WP_Error True on success, WP_Error on failure.
      */
     public function updateStatus( $id, $status ) {
-        return $this->updateRecords(
+        // return $this->updateRecords(
+        //     ['status' => $status, 'updated_at' => current_time('mysql')],
+        //     ['id' => (int) $id],
+        //     ['%s', '%s'],
+        //     ['%d']
+        // );
+        global $wpdb;
+        $result = $wpdb->update(
+            $this->tableName,
             [
-                'status'     => $status,
-                'updated_at' => current_time( 'mysql' ),
+                'status'    => $status,
+                'updatedAt' => current_time( 'mysql' ),
             ],
             [
                 'id' => (int) $id,
@@ -474,34 +468,13 @@ class Shortcode extends BaseModel {
             ['%s', '%s'],
             ['%d']
         );
-    }
-
-    public function checkAllowShortcodeScopes( int $shortcodeId, $fileKeys ) : bool {
-        if ( is_string( $fileKeys ) ) {
-            $fileKeys = [$fileKeys];
+        if ( $result === false ) {
+            return new WP_Error(400, __( 'Failed to update shortcode status.', 'integrate-dropbox' ), [
+                'status' => 500,
+            ]);
         }
-        if ( empty( $shortcodeId ) || empty( $fileKeys ) ) {
-            return false;
-        }
-        $source = $this->getShortcode( $shortcodeId, 'source' );
-        if ( empty( $source ) || !is_array( $source ) || !isset( $source['fileKeys'] ) || !is_array( $source['fileKeys'] ) ) {
-            return false;
-        }
-        $sourceFileKeys = $source['fileKeys'];
-        if ( empty( $sourceFileKeys ) ) {
-            return false;
-        }
-        foreach ( $fileKeys as $fileKey ) {
-            // $isAllowed = Helpers::validateFileKey($fileKey, $sourceFileKeys);
-            // if (!$isAllowed) {
-            //     Notices::getInstance()->add([
-            //         'type'        => 'error',
-            //         'title'       => 'File key not allowed.',
-            //         'description' => "File key not allowed for this shortcode: $fileKey"
-            //     ]);
-            //     return false;
-            // }
-        }
+        wp_cache_flush_group( "ccpidb_shortcode__{$id}" );
+        wp_cache_flush_group( "ccpidb_shortcodes" );
         return true;
     }
 
@@ -525,21 +498,21 @@ class Shortcode extends BaseModel {
      */
     private function processData( $data, $config = [] ) {
         if ( empty( $data['type'] ) || empty( $data['data'] ) ) {
-            return new WP_Error('invalid_data', __( 'Invalid shortcode data.', 'integrate-dropbox' ), [
+            return new WP_Error(401, __( 'Invalid shortcode data.', 'integrate-dropbox' ), [
                 'status' => 400,
             ]);
         }
         $moduleType = $data['type'] ?? '';
         $id = $data['id'] ?? 0;
         if ( empty( $id ) ) {
-            return new WP_Error('invalid_id', __( 'Invalid shortcode ID.', 'integrate-dropbox' ), [
+            return new WP_Error(403, __( 'Invalid shortcode ID.', 'integrate-dropbox' ), [
                 'status' => 400,
             ]);
         }
         $default = [
             'validateSchema' => true,
             'returnType'     => 'array',
-            'recursive'      => !in_array( $moduleType, ['file-browser', 'file-uploader'] ),
+            'recursive'      => !in_array( $moduleType, ['file-browser', 'file-uploader', 'file-list'] ),
             'page'           => 1,
             'fileKey'        => null,
             'order'          => null,
@@ -578,7 +551,7 @@ class Shortcode extends BaseModel {
                             $secure_hash = hash( 'sha256', $storedPassword );
                             if ( isset( $_COOKIE[$cookieKey] ) && sanitize_text_field( wp_unslash( $_COOKIE[$cookieKey] ) ) !== $secure_hash || empty( $_COOKIE[$cookieKey] ) ) {
                                 if ( empty( $password ) ) {
-                                    $value['source']['files'] = new WP_Error('password_required', __( 'Password is required', 'integrate-dropbox' ), [
+                                    $value['source']['files'] = new WP_Error(401, __( 'Password is required', 'integrate-dropbox' ), [
                                         'status' => 401,
                                     ]);
                                     $processedData[$key] = $value;
@@ -586,7 +559,7 @@ class Shortcode extends BaseModel {
                                 }
                                 $new_hash = hash( 'sha256', $password );
                                 if ( $secure_hash !== $new_hash ) {
-                                    $value['source']['files'] = new WP_Error('password_incorrect', __( 'Password is incorrect', 'integrate-dropbox' ), [
+                                    $value['source']['files'] = new WP_Error(401, __( 'Password is incorrect', 'integrate-dropbox' ), [
                                         'status' => 401,
                                     ]);
                                     $processedData[$key] = $value;
@@ -618,7 +591,7 @@ class Shortcode extends BaseModel {
                     $sourceFileKeys = $value['source']['fileKeys'] ?? [];
                     $fileKeys = $sourceFileKeys;
                     if ( empty( $fileKeys ) ) {
-                        return new WP_Error('no_file_keys', __( 'No file keys specified in the shortcode data.', 'integrate-dropbox' ), [
+                        return new WP_Error(401, __( 'No file keys specified in the shortcode data.', 'integrate-dropbox' ), [
                             'status' => 400,
                         ]);
                     }
@@ -631,7 +604,7 @@ class Shortcode extends BaseModel {
                             ]];
                             $queryConfig['recursive'] = true;
                         } else {
-                            return new WP_Error('file_key_not_allowed', __( 'The specified file key is not allowed for this shortcode.', 'integrate-dropbox' ), [
+                            return new WP_Error(401, __( 'The specified file key is not allowed for this shortcode.', 'integrate-dropbox' ), [
                                 'status' => 403,
                             ]);
                         }
@@ -682,11 +655,22 @@ class Shortcode extends BaseModel {
                     }
                     $advancedTab = $value['advanced'] ?? false;
                     if ( $advancedTab ) {
-                        $queryConfig['perPage'] ??= $advancedTab['files']['perPage'] ?? 20;
+                        $queryConfig['perPage'] ??= $advancedTab['files']['perPage'] ?? self::DEFAULT_ITEMS_PER_PAGE;
                         if ( isset( $advancedTab['fileBrowser'] ) && !empty( $advancedTab['fileBrowser'] ) ) {
                             $queryConfig['orderBy'] = $advancedTab['sort']['orderBy'] ?? 'name';
                             $queryConfig['order'] = strtoupper( $advancedTab['sort']['order'] ?? 'ASC' );
                             $queryConfig['from'] = 'cache';
+                        } elseif ( isset( $advancedTab['fileList'] ) && !empty( $advancedTab['fileList'] ) ) {
+                            $folderExpandable = $advancedTab['fileList']['folderExpandable'] ?? false;
+                            $folderRecursive = $advancedTab['fileList']['folderRecursive'] ?? true;
+                            $queryConfig['folderExpandable'] = $folderExpandable;
+                            if ( $folderRecursive && !$folderExpandable ) {
+                                $queryConfig['recursive'] = true;
+                            } elseif ( !$folderRecursive && !$folderExpandable ) {
+                                $queryConfig['recursive'] = false;
+                            }
+                            $queryConfig['orderBy'] = $advancedTab['sort']['orderBy'] ?? 'name';
+                            $queryConfig['order'] = strtoupper( $advancedTab['sort']['order'] ?? 'ASC' );
                         } else {
                             if ( empty( $this->isModuleAutoFetch( $id, $advancedTab ?? [] ) ) ) {
                                 $queryConfig['from'] = 'cache';
@@ -722,7 +706,7 @@ class Shortcode extends BaseModel {
                         continue;
                     }
                     $files = $filesData['files'] ?? [];
-                    $perPage = ( isset( $queryConfig['perPage'] ) ? (int) $queryConfig['perPage'] : 20 );
+                    $perPage = ( isset( $queryConfig['perPage'] ) ? (int) $queryConfig['perPage'] : self::DEFAULT_ITEMS_PER_PAGE );
                     $totalCount = ( isset( $filesData['totalFiles'] ) ? (int) $filesData['totalFiles'] : count( $filesData['files'] ?? [] ) );
                     $currentPage = ( isset( $filesData['currentPage'] ) ? (int) $filesData['currentPage'] : 1 );
                     $totalPages = ( isset( $filesData['totalPages'] ) ? (int) $filesData['totalPages'] : ceil( $totalCount / $perPage ) );
@@ -769,13 +753,13 @@ class Shortcode extends BaseModel {
         if ( $validateSchema || !ccpidbHasUserAccessPage( 'module_builder' ) ) {
             $type = $processedData['type'] ?? '';
             if ( empty( $type ) ) {
-                return new WP_Error('invalid_type', __( 'Invalid shortcode type.', 'integrate-dropbox' ), [
+                return new WP_Error(401, __( 'Invalid shortcode type.', 'integrate-dropbox' ), [
                     'status' => 400,
                 ]);
             }
             $schema = ccpidbGetShortcodeTypesSchema( $type );
             if ( empty( $schema ) ) {
-                return new WP_Error('unsupported_type', __( 'Unsupported shortcode type for schema validation.', 'integrate-dropbox' ), [
+                return new WP_Error(401, __( 'Unsupported shortcode type for schema validation.', 'integrate-dropbox' ), [
                     'status' => 400,
                 ]);
             }
@@ -882,7 +866,7 @@ class Shortcode extends BaseModel {
 
     private function fetchShortcode( $id ) {
         $cacheKey = "ccpidb_shortcode_{$id}";
-        $cacheResult = wp_cache_get( $cacheKey, 'ccpidb_shortcodes' );
+        $cacheResult = wp_cache_get( $cacheKey, "ccpidb_shortcode_{$id}" );
         if ( $cacheResult !== false ) {
             return $cacheResult;
         }
@@ -895,7 +879,7 @@ class Shortcode extends BaseModel {
             return $result;
         }
         if ( empty( $result ) ) {
-            return new WP_Error('not_found', __( 'Shortcode not found.', 'integrate-dropbox' ), [
+            return new WP_Error(404, __( 'Shortcode not found.', 'integrate-dropbox' ), [
                 'status' => 404,
             ]);
         }
@@ -996,3 +980,5 @@ class Shortcode extends BaseModel {
     }
 
 }
+
+// phpcs:enable WordPress.DB.DirectDatabaseQuery

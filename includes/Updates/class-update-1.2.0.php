@@ -17,10 +17,11 @@ class Update_1_2_0
         try {
             $this->add_custom_cap();
             $this->create_table();
+
             return '1.2.0';
 
         } catch (Exception $th) {
-            return new WP_Error('update_failed', 'Update to version 1.2.0 failed: ' . $th->getMessage());
+            return new WP_Error(400, 'Update to version 1.2.0 failed: ' . $th->getMessage());
         }
     }
 

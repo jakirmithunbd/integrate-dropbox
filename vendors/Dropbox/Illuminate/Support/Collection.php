@@ -192,7 +192,7 @@ class Collection implements ArrayAccess, CanBeEscapedWhenCastToString, Enumerabl
     public function containsStrict($key, $value = null)
     {
         if (func_num_args() === 2) {
-            return $this->contains(fn ($item) => data_get($item, $key) === $value);
+            return $this->contains(fn ($item) => ccpidb_data_get($item, $key) === $value);
         }
 
         if ($this->useAsCallable($key)) {
@@ -382,7 +382,7 @@ class Collection implements ArrayAccess, CanBeEscapedWhenCastToString, Enumerabl
      * @param (callable(TValue, TKey): bool)|null $callback
      * @return static
      */
-    public function filter(callable $callback = null)
+    public function filter(?callable $callback = null)
     {
         if ($callback) {
             return new static(Arr::where($this->items, $callback));
@@ -400,7 +400,7 @@ class Collection implements ArrayAccess, CanBeEscapedWhenCastToString, Enumerabl
      * @param TFirstDefault|(\Closure(): TFirstDefault) $default
      * @return TValue|TFirstDefault
      */
-    public function first(callable $callback = null, $default = null)
+    public function first(?callable $callback = null, $default = null)
     {
         return Arr::first($this->items, $callback, $default);
     }
@@ -457,7 +457,7 @@ class Collection implements ArrayAccess, CanBeEscapedWhenCastToString, Enumerabl
             return $this->items[$key];
         }
 
-        return value($default);
+        return ccpidb_value($default);
     }
 
     /**
@@ -475,7 +475,7 @@ class Collection implements ArrayAccess, CanBeEscapedWhenCastToString, Enumerabl
             return $this->items[$key];
         }
 
-        $this->offsetSet($key, $value = value($value));
+        $this->offsetSet($key, $value = ccpidb_value($value));
 
         return $value;
     }
@@ -760,7 +760,7 @@ class Collection implements ArrayAccess, CanBeEscapedWhenCastToString, Enumerabl
      * @param TLastDefault|(\Closure(): TLastDefault) $default
      * @return TValue|TLastDefault
      */
-    public function last(callable $callback = null, $default = null)
+    public function last(?callable $callback = null, $default = null)
     {
         return Arr::last($this->items, $callback, $default);
     }
@@ -1279,7 +1279,7 @@ class Collection implements ArrayAccess, CanBeEscapedWhenCastToString, Enumerabl
         }
 
         if ($count > 1) {
-            throw new MultipleItemsFoundException($count);
+            throw new MultipleItemsFoundException(intval($count));
         }
 
         return $items->first();
@@ -1438,7 +1438,7 @@ class Collection implements ArrayAccess, CanBeEscapedWhenCastToString, Enumerabl
                 if (! is_string($prop) && is_callable($prop)) {
                     $result = $prop($a, $b);
                 } else {
-                    $values = [data_get($a, $prop), data_get($b, $prop)];
+                    $values = [ccpidb_data_get($a, $prop), ccpidb_data_get($b, $prop)];
 
                     if (! $ascending) {
                         $values = array_reverse($values);

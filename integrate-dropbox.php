@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) or exit( 'Hey, what are you doing here? You silly human!' )
  * Plugin Name:       File Manager for Dropbox
  * Plugin URI:        https://codeconfig.dev/integrate-dropbox/
  * Description:       Integrate Dropbox: user-friendly WordPress plugin beautifully displays Dropbox files on posts, pages, & products.
- * Version:           1.3.9
+ * Version:           1.3.10
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            CodeConfig
@@ -53,6 +53,21 @@ if ( function_exists( '\\CodeConfig\\IDB\\ccpidb_fs' ) ) {
 
         ccpidb_fs();
         do_action( 'ccpidb_fs_loaded' );
+
+        if ( ! ccpidb_fs()->is_premium() ) {
+            $puc_path = plugin_dir_path( __FILE__ ) . 'plugin-update-checker/plugin-update-checker.php';
+            if ( file_exists( $puc_path ) ) {
+                require $puc_path;
+
+                $update_checker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+                    'https://github.com/jakirmithunbd/integrate-dropbox/',
+                    __FILE__,
+                    'integrate-dropbox'
+                );
+
+                $update_checker->getVcsApi()->enableReleaseAssets();
+            }
+        }
     }
     define( 'CCPIDB_FILE', __FILE__ );
     require_once plugin_dir_path( CCPIDB_FILE ) . 'core/config.php';

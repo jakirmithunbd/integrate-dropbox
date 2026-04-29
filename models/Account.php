@@ -2,6 +2,8 @@
 
 namespace CodeConfig\IDB\Models;
 
+defined( 'ABSPATH' ) || exit( 'No direct script access allowed' );
+// phpcs:disable WordPress.DB.DirectDatabaseQuery
 use CodeConfig\IDB\App\Account as AppAccount;
 use CodeConfig\IDB\App\Accounts;
 use function CodeConfig\IDB\ccpidb_fs;
@@ -561,3 +563,5 @@ class Account extends BaseModel {
     }
 
 }
+
+// phpcs:enable WordPress.DB.DirectDatabaseQuery

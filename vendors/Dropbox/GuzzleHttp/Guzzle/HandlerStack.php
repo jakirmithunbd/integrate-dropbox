@@ -44,7 +44,7 @@ class HandlerStack
      *                                                                            handler is provided, the best handler for your
      *                                                                            system will be utilized.
      */
-    public static function create(callable $handler = null): self
+    public static function create(?callable $handler = null): self
     {
         $stack = new self($handler ?: Utils::chooseHandler());
         $stack->push(Middleware::httpErrors(), 'http_errors');
@@ -58,7 +58,7 @@ class HandlerStack
     /**
      * @param (callable(RequestInterface, array): PromiseInterface)|null $handler Underlying HTTP handler.
      */
-    public function __construct(callable $handler = null)
+    public function __construct(?callable $handler = null)
     {
         $this->handler = $handler;
     }
@@ -129,9 +129,9 @@ class HandlerStack
      * Unshift a middleware to the bottom of the stack.
      *
      * @param callable(callable): callable $middleware Middleware function
-     * @param string $name Name to register for this middleware.
+     * @param string|null $name Name to register for this middleware.
      */
-    public function unshift(callable $middleware, string $name = null): void
+    public function unshift(callable $middleware, ?string $name = null): void
     {
         \array_unshift($this->stack, [$middleware, $name]);
         $this->cached = null;
@@ -225,7 +225,7 @@ class HandlerStack
             }
         }
 
-        throw new \InvalidArgumentException("Middleware not found: $name");
+        throw new \InvalidArgumentException(esc_html(sprintf("Middleware not found: %s", esc_html($name))));
     }
 
     /**

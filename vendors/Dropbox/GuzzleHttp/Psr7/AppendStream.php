@@ -46,7 +46,7 @@ final class AppendStream implements StreamInterface
             if (\PHP_VERSION_ID  >= 70400) {
                 throw $e;
             }
-            trigger_error(sprintf('%s::__toString exception: %s', self::class, (string) $e), E_USER_ERROR);
+            trigger_error(sprintf('%s::__toString exception: %s', self::class, esc_html((string) $e)), E_USER_ERROR);
 
             return '';
         }
@@ -168,8 +168,8 @@ final class AppendStream implements StreamInterface
             try {
                 $stream->rewind();
             } catch (\Exception $e) {
-                throw new \RuntimeException('Unable to seek stream '
-                    . $i . ' of the AppendStream', 0, $e);
+                throw new \RuntimeException('Unable to seek stream ' . esc_html($i)
+                    . ' of the AppendStream', 0, $e); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
             }
         }
 

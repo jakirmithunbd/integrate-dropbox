@@ -7,6 +7,8 @@ use WP_Error;
 
 defined('ABSPATH') || exit('No direct script access allowed');
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery
+
 /**
  * Notice Model Class for Integrate Dropbox Plugin
  *
@@ -77,7 +79,7 @@ class Notices extends BaseModel
         $notices = $this->findMultipleRecords($sql, $prompts, $output);
 
         $count       = $this->countRecords();
-        $unreadCount = $this->countRecords("status = %s", ['unread']);
+        $unreadCount = $this->countRecords(["status" => 'unread']);
         $hasMore     = $page < ceil($count / $perPage);
 
         $response = [
@@ -217,3 +219,5 @@ class Notices extends BaseModel
         return $this->updateRecords(['status' => 'read'], ['status' => 'unread'], ['%s'], ['%s']);
     }
 }
+
+// phpcs:enable WordPress.DB.DirectDatabaseQuery

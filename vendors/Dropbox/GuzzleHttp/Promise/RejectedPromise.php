@@ -65,7 +65,7 @@ class RejectedPromise implements PromiseInterface
     public function wait(bool $unwrap = true)
     {
         if ($unwrap) {
-            throw Create::exceptionFor($this->reason);
+            throw Create::exceptionFor($this->reason); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
         }
 
         return null;

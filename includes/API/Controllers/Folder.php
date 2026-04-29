@@ -248,20 +248,35 @@ class Folder extends BaseController
                 $folderData['fileKey'],
             );
 
-            if (!empty($shortcode) && ($parent === '/' || $parent === '')) {
-                $shortcodeType = $shortcode['type'] ?? '';
+            if (($parent === '/' || $parent === '')) {
+                if (!empty($shortcode)) {
+                    $shortcodeType = $shortcode['type'] ?? '';
 
-                if (empty($shortcodeType)) {
-                    return $this->errorResponse('Shortcode type is missing', 500);
-                }
+                    if (empty($shortcodeType)) {
+                        return $this->errorResponse('Shortcode type is missing', 500);
+                    }
 
-                $isRootUpload  = $shortcode['data']['advanced']['fileBrowser']['headerOptions']['root_upload'] ?? false;
+                    $isRootUpload  = $shortcode['data']['advanced']['fileBrowser']['headerOptions']['root_upload'] ?? false;
 
-                if ($shortcodeType === 'file-browser' && $isRootUpload) {
-                    $folderKey     = $folderData['fileKey'];
-                    $result        = Shortcode::getInstance()->insertFile($shortcodeId, $folderKey);
-                    if (is_wp_error($result)) {
-                        return $this->errorResponse($result->get_error_message(), self::HTTP_INTERNAL_SERVER_ERROR);
+                    if ($shortcodeType === 'file-browser' && $isRootUpload) {
+                        $folderKey     = $folderData['fileKey'];
+                        $result        = Shortcode::getInstance()->insertFile($shortcodeId, $folderKey);
+                        if (is_wp_error($result)) {
+                            return $this->errorResponse($result->get_error_message(), self::HTTP_INTERNAL_SERVER_ERROR);
+                        }
+                    }
+                } elseif (empty($shortcodeId) && ccpidbHasUserAccessPage('file_browser') === true) {
+                    $userAccess = ccpidbGetCurrentUserAccess();
+
+                    if (!empty($userAccess['folders']) && is_array($userAccess['folders']) && !empty($userAccess['type']) && !empty($userAccess['id']) && !empty($userAccess['value'])) {
+
+                        $userAccess['folders'][] = $folderData['fileKey'];
+                        $type                    = $userAccess['type'];
+                        $value                   = $userAccess['value'];
+                        $id                      = $userAccess['id'];
+
+                        UserAccess::getInstance()->update($id, $type, $value, $userAccess['folders'], $userAccess['pages']);
+
                     }
                 }
             }
@@ -290,14 +305,14 @@ class Folder extends BaseController
         $accessSettings = UserAccess::getInstance()->getAccessData($userName, $userRoles);
 
         if (empty($accessSettings) && ccpidbHasUserAccessPage('file_browser') !== true) {
-            return new WP_Error('forbidden', 'You do not have permission to access this folder', ['status' => 403]);
+            return new WP_Error(403, 'You do not have permission to access this folder', ['status' => 403]);
         }
 
         $fileKey              = $request->get_param('fileKey');
         $accessSettingsFolder = $accessSettings['folders'] ?? [];
 
         if (!empty($fileKey) && 'root' !== $fileKey && !Helpers::validateFileKey($fileKey, $accessSettingsFolder)) {
-            return new WP_Error('forbidden', 'You do not have permission to access this folder', ['status' => 403]);
+            return new WP_Error(403, 'You do not have permission to access this folder', ['status' => 403]);
         }
 
         return true;

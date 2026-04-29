@@ -225,12 +225,12 @@ class DropboxFile
         if (! $this->isRemoteFile($this->path)) {
             // File is not Readable
             if ($this->isNotReadable()) {
-                throw new DropboxClientException('Failed to create DropboxFile instance. Unable to read resource: ' . $this->path . '.');
+                throw new DropboxClientException('Failed to create DropboxFile instance. Unable to read resource: ' . esc_html($this->path) . '.');
             }
 
             // File is not Writable
             if ($this->isNotWritable()) {
-                throw new DropboxClientException('Failed to create DropboxFile instance. Unable to write resource: ' . $this->path . '.');
+                throw new DropboxClientException('Failed to create DropboxFile instance. Unable to write resource: ' . esc_html($this->path) . '.');
             }
         }
 
@@ -239,7 +239,7 @@ class DropboxFile
 
         // Unable to create stream
         if (! $this->stream) {
-            throw new DropboxClientException('Failed to create DropboxFile instance. Unable to open resource: ' . $this->path . '.');
+            throw new DropboxClientException('Failed to create DropboxFile instance. Unable to open resource: ' . esc_html($this->path) . '.');
         }
     }
 

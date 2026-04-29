@@ -24,7 +24,7 @@ class Users extends BaseController
         register_rest_route($this->namespace, $this->rest_base . '/list', [
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => [$this, 'getUserList'],
-            'permission_callback' => [$this, 'manageSettingsPermission'],
+            'permission_callback' => [$this, 'managePermission'],
             'args'                => [
                 'hideCurrentUser' => [
                     'required'    => false,
@@ -52,7 +52,7 @@ class Users extends BaseController
                             if (!in_array($field, $allowed_fields, true)) {
 
                                 /* translators: %s: Invalid field name */
-                                return new WP_Error('invalid_field', sprintf(__('Invalid field: %s', 'integrate-dropbox'), $field));
+                                return new WP_Error(401, sprintf(__('Invalid field: %s', 'integrate-dropbox'), $field));
                             }
                         }
 

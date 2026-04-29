@@ -56,18 +56,18 @@ class DropboxGuzzleHttpClient implements DropboxHttpClientInterface
             //Send the Request
             $rawResponse = $this->client->send($request, $options);
         } catch (BadResponseException $e) {
-            throw new DropboxClientException($e->getResponse()->getBody(), $e->getCode(), $e);
+            throw new DropboxClientException($e->getResponse()->getBody(), intval($e->getCode()), $e); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
         } catch (RequestException $e) {
             $rawResponse = $e->getResponse();
 
             if (! $rawResponse instanceof ResponseInterface) {
-                throw new DropboxClientException($e->getMessage(), $e->getCode());
+                throw new DropboxClientException(esc_html($e->getMessage()), intval($e->getCode()), $e); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
             }
         }
 
         //Something went wrong
         if ($rawResponse->getStatusCode() >= 400) {
-            throw new DropboxClientException($rawResponse->getBody());
+            throw new DropboxClientException(esc_html($rawResponse->getBody()));
         }
 
         if (array_key_exists('sink', $options)) {

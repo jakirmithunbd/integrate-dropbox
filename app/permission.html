@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Missing Permissions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: #FFFFFF;
+            height: 100%;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Inter, sans-serif;
+        }
+
+        .ccpidb-card {
+            border-radius: 12px;
+            border: 1px solid #E3EEFF;
+            max-width: 600px;
+            width: 100%;
+            padding: 25px;
+        }
+
+        .ccpidb-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .ccpidb-title {
+            font-size: 30px;
+            font-weight: 400;
+            color: #FF0000;
+        }
+
+        .ccpidb-section {
+            margin-top: 25px;
+        }
+
+        .ccpidb-section h3 {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: #46566E;
+        }
+
+        .ccpidb-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .ccpidb-list li {
+            padding: 6px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .ccpidb-allowed li {
+            border: 1px solid #CFE2FF;
+            background-color: #F5FAFF;
+            color: #000E25;
+            font-size: 16px;
+        }
+
+        .ccpidb-list-item-icon {
+            width: 36px;
+            height: 36px;
+            background-color: #FFFFFF;
+            border: 1px solid #CFE2FF;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .ccpidb-missing .ccpidb-list-item-icon {
+            border: 1px solid #FF000026;
+        }
+
+        .ccpidb-missing li {
+            background: #FF00000D;
+            border: 1px solid #FF000026;
+            color: #000E25;
+            font-size: 16px;
+        }
+
+        .ccpidb-footer {
+            margin-top: 25px;
+            font-size: 18px;
+            color: #46566E;
+        }
+
+        .ccpidb-btn {
+            margin-top: 20px;
+            background: #FF0000;
+            border: none;
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        a.ccpidb-btn {
+            background: #d9ecff;
+            text-decoration: none;
+            color: #0061FE;
+            display: inline-block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="ccpidb-card">
+
+        <div class="ccpidb-header">
+            <div class="ccpidb-title">Missing Required Permissions</div>
+        </div>
+
+        <!-- Allowed Permissions -->
+        <div class="ccpidb-section ccpidb-allowed">
+            <h3>Allowed Permissions</h3>
+            <ul class="ccpidb-list">
+                <li>
+                    <span class="ccpidb-list-item-icon ccpidb-list-check">
+                        <svg width="15" height="11" viewBox="0 0 15 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M5.02779 8.8666L13.6663 0.228095C13.815 0.0792616 13.989 0.00326167 14.1883 9.50001e-05C14.3876 -0.00307167 14.5649 0.0729282 14.72 0.228095C14.8752 0.383262 14.9528 0.561428 14.9528 0.762595C14.9528 0.963928 14.8752 1.14218 14.72 1.29734L5.66054 10.3723C5.47971 10.553 5.26879 10.6433 5.02779 10.6433C4.78679 10.6433 4.57587 10.553 4.39504 10.3723L0.22004 6.19734C0.0713732 6.04851 -0.00196018 5.87184 3.9823e-05 5.66734C0.00187316 5.46301 0.0803731 5.28326 0.23554 5.12809C0.390706 4.97293 0.568873 4.89534 0.77004 4.89534C0.971373 4.89534 1.14962 4.97293 1.30479 5.12809L5.02779 8.8666Z"
+                                fill="#0061FE" />
+                        </svg>
+                    </span>
+                    account_info.read
+                </li>
+                <li>
+                    <span class="ccpidb-list-item-icon ccpidb-list-check">
+                        <svg width="15" height="11" viewBox="0 0 15 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M5.02779 8.8666L13.6663 0.228095C13.815 0.0792616 13.989 0.00326167 14.1883 9.50001e-05C14.3876 -0.00307167 14.5649 0.0729282 14.72 0.228095C14.8752 0.383262 14.9528 0.561428 14.9528 0.762595C14.9528 0.963928 14.8752 1.14218 14.72 1.29734L5.66054 10.3723C5.47971 10.553 5.26879 10.6433 5.02779 10.6433C4.78679 10.6433 4.57587 10.553 4.39504 10.3723L0.22004 6.19734C0.0713732 6.04851 -0.00196018 5.87184 3.9823e-05 5.66734C0.00187316 5.46301 0.0803731 5.28326 0.23554 5.12809C0.390706 4.97293 0.568873 4.89534 0.77004 4.89534C0.971373 4.89534 1.14962 4.97293 1.30479 5.12809L5.02779 8.8666Z"
+                                fill="#0061FE" />
+                        </svg>
+                    </span>
+                    account_info.read
+                </li>
+            </ul>
+        </div>
+
+        <!-- Missing Permissions -->
+        <div class="ccpidb-section ccpidb-missing">
+            <h3>Missing Permissions</h3>
+            <ul class="ccpidb-list">
+                <li>
+                    <span class="ccpidb-list-item-icon ccpidb-list-cross">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M4.52211 5.5655L1.27586 8.8115C1.13103 8.9565 0.955445 9.02733 0.749112 9.024C0.542612 9.02083 0.366946 8.94683 0.222112 8.802C0.0772792 8.65717 0.00486242 8.47992 0.00486242 8.27025C0.00486242 8.06059 0.0772792 7.88333 0.222112 7.7385L3.45861 4.502L0.212612 1.28075C0.0676124 1.13592 -0.00322097 0.958667 0.00011236 0.749001C0.00327903 0.539501 0.0772792 0.362334 0.222112 0.2175C0.366946 0.0725003 0.544196 0 0.753862 0C0.963529 0 1.14078 0.0725003 1.28561 0.2175L4.52211 3.4635L7.74336 0.2175C7.8882 0.0725003 8.06378 0 8.27011 0C8.47661 0 8.65228 0.0725003 8.79711 0.2175C8.95228 0.3725 9.02986 0.552251 9.02986 0.756751C9.02986 0.961251 8.95228 1.13592 8.79711 1.28075L5.56061 4.502L8.80661 7.74825C8.95161 7.89309 9.02411 8.06867 9.02411 8.275C9.02411 8.4815 8.95161 8.65717 8.80661 8.802C8.65161 8.95717 8.47186 9.03475 8.26736 9.03475C8.06286 9.03475 7.8882 8.95717 7.74336 8.802L4.52211 5.5655Z"
+                                fill="#FF0000" />
+                        </svg>
+                    </span>
+                    files.content.write
+                </li>
+                <li>
+                    <span class="ccpidb-list-item-icon ccpidb-list-cross">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M4.52211 5.5655L1.27586 8.8115C1.13103 8.9565 0.955445 9.02733 0.749112 9.024C0.542612 9.02083 0.366946 8.94683 0.222112 8.802C0.0772792 8.65717 0.00486242 8.47992 0.00486242 8.27025C0.00486242 8.06059 0.0772792 7.88333 0.222112 7.7385L3.45861 4.502L0.212612 1.28075C0.0676124 1.13592 -0.00322097 0.958667 0.00011236 0.749001C0.00327903 0.539501 0.0772792 0.362334 0.222112 0.2175C0.366946 0.0725003 0.544196 0 0.753862 0C0.963529 0 1.14078 0.0725003 1.28561 0.2175L4.52211 3.4635L7.74336 0.2175C7.8882 0.0725003 8.06378 0 8.27011 0C8.47661 0 8.65228 0.0725003 8.79711 0.2175C8.95228 0.3725 9.02986 0.552251 9.02986 0.756751C9.02986 0.961251 8.95228 1.13592 8.79711 1.28075L5.56061 4.502L8.80661 7.74825C8.95161 7.89309 9.02411 8.06867 9.02411 8.275C9.02411 8.4815 8.95161 8.65717 8.80661 8.802C8.65161 8.95717 8.47186 9.03475 8.26736 9.03475C8.06286 9.03475 7.8882 8.95717 7.74336 8.802L4.52211 5.5655Z"
+                                fill="#FF0000" />
+                        </svg>
+                    </span>
+                    files.content.write
+                </li>
+                <li>
+                    <span class="ccpidb-list-item-icon ccpidb-list-cross">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M4.52211 5.5655L1.27586 8.8115C1.13103 8.9565 0.955445 9.02733 0.749112 9.024C0.542612 9.02083 0.366946 8.94683 0.222112 8.802C0.0772792 8.65717 0.00486242 8.47992 0.00486242 8.27025C0.00486242 8.06059 0.0772792 7.88333 0.222112 7.7385L3.45861 4.502L0.212612 1.28075C0.0676124 1.13592 -0.00322097 0.958667 0.00011236 0.749001C0.00327903 0.539501 0.0772792 0.362334 0.222112 0.2175C0.366946 0.0725003 0.544196 0 0.753862 0C0.963529 0 1.14078 0.0725003 1.28561 0.2175L4.52211 3.4635L7.74336 0.2175C7.8882 0.0725003 8.06378 0 8.27011 0C8.47661 0 8.65228 0.0725003 8.79711 0.2175C8.95228 0.3725 9.02986 0.552251 9.02986 0.756751C9.02986 0.961251 8.95228 1.13592 8.79711 1.28075L5.56061 4.502L8.80661 7.74825C8.95161 7.89309 9.02411 8.06867 9.02411 8.275C9.02411 8.4815 8.95161 8.65717 8.80661 8.802C8.65161 8.95717 8.47186 9.03475 8.26736 9.03475C8.06286 9.03475 7.8882 8.95717 7.74336 8.802L4.52211 5.5655Z"
+                                fill="#FF0000" />
+                        </svg>
+                    </span>
+                    files.content.write
+                </li>
+                <li>
+                    <span class="ccpidb-list-item-icon ccpidb-list-cross">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M4.52211 5.5655L1.27586 8.8115C1.13103 8.9565 0.955445 9.02733 0.749112 9.024C0.542612 9.02083 0.366946 8.94683 0.222112 8.802C0.0772792 8.65717 0.00486242 8.47992 0.00486242 8.27025C0.00486242 8.06059 0.0772792 7.88333 0.222112 7.7385L3.45861 4.502L0.212612 1.28075C0.0676124 1.13592 -0.00322097 0.958667 0.00011236 0.749001C0.00327903 0.539501 0.0772792 0.362334 0.222112 0.2175C0.366946 0.0725003 0.544196 0 0.753862 0C0.963529 0 1.14078 0.0725003 1.28561 0.2175L4.52211 3.4635L7.74336 0.2175C7.8882 0.0725003 8.06378 0 8.27011 0C8.47661 0 8.65228 0.0725003 8.79711 0.2175C8.95228 0.3725 9.02986 0.552251 9.02986 0.756751C9.02986 0.961251 8.95228 1.13592 8.79711 1.28075L5.56061 4.502L8.80661 7.74825C8.95161 7.89309 9.02411 8.06867 9.02411 8.275C9.02411 8.4815 8.95161 8.65717 8.80661 8.802C8.65161 8.95717 8.47186 9.03475 8.26736 9.03475C8.06286 9.03475 7.8882 8.95717 7.74336 8.802L4.52211 5.5655Z"
+                                fill="#FF0000" />
+                        </svg>
+                    </span>
+                    files.content.write
+                </li>
+                <li>
+                    <span class="ccpidb-list-item-icon ccpidb-list-cross">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M4.52211 5.5655L1.27586 8.8115C1.13103 8.9565 0.955445 9.02733 0.749112 9.024C0.542612 9.02083 0.366946 8.94683 0.222112 8.802C0.0772792 8.65717 0.00486242 8.47992 0.00486242 8.27025C0.00486242 8.06059 0.0772792 7.88333 0.222112 7.7385L3.45861 4.502L0.212612 1.28075C0.0676124 1.13592 -0.00322097 0.958667 0.00011236 0.749001C0.00327903 0.539501 0.0772792 0.362334 0.222112 0.2175C0.366946 0.0725003 0.544196 0 0.753862 0C0.963529 0 1.14078 0.0725003 1.28561 0.2175L4.52211 3.4635L7.74336 0.2175C7.8882 0.0725003 8.06378 0 8.27011 0C8.47661 0 8.65228 0.0725003 8.79711 0.2175C8.95228 0.3725 9.02986 0.552251 9.02986 0.756751C9.02986 0.961251 8.95228 1.13592 8.79711 1.28075L5.56061 4.502L8.80661 7.74825C8.95161 7.89309 9.02411 8.06867 9.02411 8.275C9.02411 8.4815 8.95161 8.65717 8.80661 8.802C8.65161 8.95717 8.47186 9.03475 8.26736 9.03475C8.06286 9.03475 7.8882 8.95717 7.74336 8.802L4.52211 5.5655Z"
+                                fill="#FF0000" />
+                        </svg>
+                    </span>
+                    files.content.write
+                </li>
+            </ul>
+        </div>
+
+        <div class="ccpidb-footer">
+            Please grant all required permissions and try logging in again.
+        </div>
+
+        <button class="ccpidb-btn" onclick="window.close()">
+            Close
+        </button>
+
+        <a class="ccpidb-btn" href="https://codeconfig.dev/docs/how-to-connect-my-dropbox-app-with-wordpress/"
+            target="_blank" style="margin-left: 10px;">
+            Documentation
+        </a>
+
+    </div>
+
+    <div class="ccpidb-card">
+
+        <div class="ccpidb-header">
+            <div class="ccpidb-title">Missing Required Permissions</div>
+        </div>
+
+        <!-- Allowed -->
+        <div class="ccpidb-section ccpidb-allowed">
+            <h3>Allowed Permissions</h3>
+            <ul class="ccpidb-list" id="allowed-list"></ul>
+        </div>
+
+        <!-- Missing -->
+        <div class="ccpidb-section ccpidb-missing">
+            <h3>Missing Permissions</h3>
+            <ul class="ccpidb-list" id="missing-list"></ul>
+        </div>
+
+        <div class="ccpidb-footer">
+            Please grant all required permissions and try logging in again.
+        </div>
+
+        <button class="ccpidb-btn" onclick="window.close()">Close</button>
+
+        <a class="ccpidb-btn" href="https://codeconfig.dev/docs/how-to-connect-my-dropbox-app-with-wordpress/"
+            target="_blank" style="margin-left: 10px;">
+            Documentation
+        </a>
+
+    </div>
+
+</body>
+
+</html>

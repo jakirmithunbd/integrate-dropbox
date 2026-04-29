@@ -27,6 +27,23 @@ class Shortcode {
         'search-box'
     ];
 
+    public const ALLOW_HTML_TAGS = [
+        'div'    => [
+            'id'                  => true,
+            'class'               => true,
+            'style'               => true,
+            'data-post_id'        => true,
+            'data-id'             => true,
+            'data-render_id'      => true,
+            'data-status'         => true,
+            'data-field-name'     => true,
+            'ccpidb-theme-status' => true,
+        ],
+        'script' => [
+            'type' => true,
+        ],
+    ];
+
     public function __construct() {
         if ( empty( $this->scModel ) ) {
             $this->scModel = ModelsShortcode::getInstance();
@@ -226,6 +243,7 @@ class Shortcode {
         }
         $object_key = "ccpidb_{$id}";
         $enqueueHandle = "ccpidb-{$type}";
+        $theme = $data['data']['advanced']['theme'] ?? '';
         $enqueue = Enqueue::getInstance();
         $enqueue->common_scripts( $object_key, 'frontend' );
         $enqueue->add( 'shared', 'js', [$enqueueHandle] );
@@ -241,14 +259,17 @@ class Shortcode {
         $escaped_status = esc_attr( $status );
         $escaped_enqueue_handle = esc_attr( $enqueueHandle );
         $escaped_object_key = esc_js( $object_key );
-        $postId = get_the_ID();
+        $post_id = get_the_ID();
+        $render_id = uniqid( "ccpidb_{$escaped_id}_", true );
         $html = sprintf(
-            '<div data-post_id="%d" data-id="ccpidb_%d" data-status="%s" id="ccpidb-module-%s" class="ccpidb-top-level-wrapper %s"></div>',
-            $postId,
+            '<div data-post_id="%d" data-id="ccpidb_%d" data-render_id="%s" data-status="%s" id="ccpidb-module-%s" class="ccpidb-top-level-wrapper %s" ccpidb-theme-status="%s"></div>',
+            $post_id,
             $escaped_id,
+            $render_id,
             $escaped_status,
             $escaped_id,
-            $escaped_enqueue_handle
+            $escaped_enqueue_handle,
+            $theme
         );
         if ( $this->return === 'array' ) {
             return [
@@ -260,6 +281,7 @@ class Shortcode {
                 'type'           => $type,
                 'data'           => $data,
                 'html'           => $html,
+                'render_id'      => $render_id,
             ];
         }
         $json_data = wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );

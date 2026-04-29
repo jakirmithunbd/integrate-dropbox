@@ -33,7 +33,7 @@ class Update_1_3_2 {
             add_action( 'admin_init', [$this, 'init'] );
             return '1.3.2';
         } catch ( Exception $th ) {
-            return new WP_Error('update_failed', 'Update to version 1.3.2 failed: ' . $th->getMessage());
+            return new WP_Error(400, 'Update to version 1.3.2 failed: ' . $th->getMessage());
         }
     }
 

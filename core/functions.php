@@ -536,34 +536,50 @@ if ( !function_exists( "ccpidbGetModuleDefaultData" ) ) {
                 'title'         => 'File List',
                 'advancedKey'   => 'fileList',
                 'fileList'      => [
-                    "viewButtonText"          => "View",
-                    "viewBackgroundColor"     => "#0061fe",
-                    "viewTextColor"           => "#ffffff",
-                    "viewBorderRadius"        => 10,
-                    "viewButtonSize"          => "medium",
-                    "downloadButton"          => false,
-                    "downloadButtonText"      => "Download",
-                    "downloadBackgroundColor" => "#0061fe",
-                    "downloadTextColor"       => "#ffffff",
-                    "downloadBorderRadius"    => 10,
-                    "downloadButtonSize"      => "medium",
-                    "columnsDevice"           => "desktop",
-                    "columns"                 => [
-                        'desktop' => 3,
-                        'tablet'  => 2,
-                        'mobile'  => 1,
+                    "activeView"       => "default",
+                    "folderExpandable" => false,
+                    "folderRecursive"  => true,
+                    "listDisplay"      => [
+                        "name"      => [
+                            "enable" => true,
+                            "text"   => "File Info",
+                        ],
+                        'thumbnail' => [
+                            'enable' => true,
+                        ],
+                        "extension" => [
+                            "enable" => true,
+                            "text"   => "Extension",
+                        ],
+                        "size"      => [
+                            "enable" => true,
+                            "text"   => "Size",
+                        ],
+                        "date"      => [
+                            "enable" => true,
+                            "text"   => "Modified",
+                        ],
+                        "actions"   => [
+                            "enable" => true,
+                            "text"   => "Actions",
+                        ],
                     ],
-                    "openInNewTab"            => false,
-                    "showFileSize"            => true,
-                    "showFileExtension"       => false,
-                    "showTimeStamp"           => true,
                 ],
-                'permissions'   => ['download', 'preview'],
+                'permissions'   => [
+                    'preview',
+                    'download',
+                    'share',
+                    'rename',
+                    'delete'
+                ],
                 'notifications' => [
                     'enable',
                     'emailRecipients',
                     'skipCurrentUser',
-                    'download'
+                    'download',
+                    "share",
+                    "rename",
+                    "delete"
                 ],
             ],
         ];
@@ -676,7 +692,7 @@ if ( !function_exists( "ccpidbGetShortcodeTypesSchema" ) ) {
                 'permissions'   => 'array',
             ],
         ];
-        if ( current_user_can( 'manage_options' ) ) {
+        if ( ccpidbHasUserAccessPage( 'module_builder' ) ) {
             $defaultSchema['locations'] = 'array';
         }
         $defaultAdvanced = [
@@ -746,6 +762,7 @@ if ( !function_exists( "ccpidbGetShortcodeTypesSchema" ) ) {
             'icon'            => 'string',
             'size'            => 'integer',
             'createdAt'       => 'string',
+            'updatedAt'       => 'string',
             'additionalData'  => 'array',
         ];
         $fileList['data']['advanced'] = $defaultAdvanced;
@@ -958,16 +975,6 @@ if ( !function_exists( "ccpidbTitleToUrlSlug" ) ) {
     }
 
 }
-/**
- * Generate a secure and optimized attachment URL for CCPIDB.
- *
- * @param string $key Unique file key.
- * @param string $name File name (without extension).
- * @param string $size Image size (default: full).
- * @param string $extension File extension (default: jpg).
- *
- * @return string Sanitized attachment URL.
- */
 function ccpidbGetUrl(
     $action,
     $key,
@@ -1012,7 +1019,7 @@ function ccpidbGetUrl(
     $allowDotExtension = Helpers::getSetting( 'advanced.allowDotExtension', true );
     if ( !$allowDotExtension ) {
         return home_url( sprintf(
-            '/ccpidb/%s/%s/%s/%s',
+            '/ccpidb/%s/%s/%s/%s/',
             $action,
             $key,
             $name,
@@ -1021,7 +1028,7 @@ function ccpidbGetUrl(
     }
     if ( $action === 'attachment' ) {
         return home_url( sprintf(
-            '/ccpidb/%s/%s/%s.%s',
+            '/ccpidb/%s/%s/%s.%s/',
             $action,
             $key,
             $name,
@@ -1029,7 +1036,7 @@ function ccpidbGetUrl(
         ) );
     } else {
         return home_url( sprintf(
-            '/ccpidb/%s/%s/%s/%s',
+            '/ccpidb/%s/%s/%s/%s/',
             $action,
             $key,
             $name,
@@ -1401,10 +1408,7 @@ function ccpidbGetCurrentUserAccess() {
     if ( !is_array( $accessFolders ) || is_wp_error( $accessFolders ) || empty( $accessFolders ) ) {
         return false;
     }
-    return [
-        'pages'   => $accessSettingsPages,
-        'folders' => $accessFolders,
-    ];
+    return $accessSettings;
 }
 
 function ccpidbHasUserAccessToFolder(  $folderKey  ) {
@@ -1425,7 +1429,8 @@ function ccpidbHasUserAccessToFolder(  $folderKey  ) {
     return false;
 }
 
-function ccpidbHasUserAccessPage(  ... $pages  ) {
+function ccpidbHasUserAccessPage(  $pages = [], $relation = "AND"  ) {
+    $pages = (array) $pages;
     $accessData = ccpidbGetCurrentUserAccess();
     if ( $accessData === true ) {
         return true;
@@ -1443,5 +1448,10 @@ function ccpidbHasUserAccessPage(  ... $pages  ) {
     if ( count( $pages ) === 1 && is_array( $pages[0] ) ) {
         $pages = $pages[0];
     }
-    return empty( array_diff( $pages, $allowedPages ) );
+    if ( $relation === "AND" ) {
+        return empty( array_diff( $pages, $allowedPages ) );
+    } elseif ( $relation === "OR" ) {
+        return !empty( array_intersect( $pages, $allowedPages ) );
+    }
+    return false;
 }

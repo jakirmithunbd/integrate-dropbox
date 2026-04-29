@@ -185,18 +185,18 @@ class Arr
      * @param mixed $default
      * @return mixed
      */
-    public static function first($array, callable $callback = null, $default = null)
+    public static function first($array, ?callable $callback = null, $default = null)
     {
         if (is_null($callback)) {
             if (empty($array)) {
-                return value($default);
+                return ccpidb_value($default);
             }
 
             foreach ($array as $item) {
                 return $item;
             }
 
-            return value($default);
+            return ccpidb_value($default);
         }
 
         foreach ($array as $key => $value) {
@@ -205,7 +205,7 @@ class Arr
             }
         }
 
-        return value($default);
+        return ccpidb_value($default);
     }
 
     /**
@@ -216,10 +216,10 @@ class Arr
      * @param mixed $default
      * @return mixed
      */
-    public static function last($array, callable $callback = null, $default = null)
+    public static function last($array, ?callable $callback = null, $default = null)
     {
         if (is_null($callback)) {
-            return empty($array) ? value($default) : end($array);
+            return empty($array) ? ccpidb_value($default) : end($array);
         }
 
         return static::first(array_reverse($array, true), $callback, $default);
@@ -310,7 +310,7 @@ class Arr
     public static function get($array, $key, $default = null)
     {
         if (! static::accessible($array)) {
-            return value($default);
+            return ccpidb_value($default);
         }
 
         if (is_null($key)) {
@@ -322,14 +322,14 @@ class Arr
         }
 
         if (! str_contains($key, '.')) {
-            return isset($array[$key]) ? $array[$key] : value($default);
+            return isset($array[$key]) ? $array[$key] : ccpidb_value($default);
         }
 
         foreach (explode('.', $key) as $segment) {
             if (static::accessible($array) && static::exists($array, $segment)) {
                 $array = $array[$segment];
             } else {
-                return value($default);
+                return ccpidb_value($default);
             }
         }
 
@@ -508,7 +508,7 @@ class Arr
         [$value, $key] = static::explodePluckParameters($value, $key);
 
         foreach ($array as $item) {
-            $itemValue = data_get($item, $value);
+            $itemValue = ccpidb_data_get($item, $value);
 
             // If the key is "null", we will just append the value to the array and keep
             // looping. Otherwise we will key the array using the value of the key we
@@ -516,7 +516,7 @@ class Arr
             if (is_null($key)) {
                 $results[] = $itemValue;
             } else {
-                $itemKey = data_get($item, $key);
+                $itemKey = ccpidb_data_get($item, $key);
 
                 if (is_object($itemKey) && method_exists($itemKey, '__toString')) {
                     $itemKey = (string) $itemKey;
@@ -659,7 +659,7 @@ class Arr
 
         if ($requested > $count) {
             throw new InvalidArgumentException(
-                "You requested {$requested} items, but there are only {$count} items available."
+                esc_html(sprintf("You requested %d items, but there are only %d items available.", $requested, $count))
             );
         }
 

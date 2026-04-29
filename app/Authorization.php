@@ -46,6 +46,26 @@ class Authorization
                 $this->closeAndExit();
             }
 
+            $scope = $accessToken->scope ?? '';
+
+            $appPermission = AppPermissionManager::validatePermissions($scope);
+
+            if (empty($appPermission['status'])) {
+                echo wp_kses($appPermission['message'], [
+                    'div'       => ['class' => []],
+                    'h3'        => ['class' => []],
+                    'ul'        => ['class' => []],
+                    'li'        => ['class' => []],
+                    'style'     => [],
+                    'button'    => ['class' => [], 'onclick' => []],
+                    'a'         => ['class' => [], 'href' => [], 'target' => []],
+                    'svg'       => ['width' => [], 'height' => [], 'viewBox' => [], 'fill' => [], 'xmlns' => []],
+                    'path'      => ['d' => [], 'fill' => []],
+                    'span'      => ['class' => []],
+                ]);
+                exit;
+            }
+
             $dropboxClient->setAccessToken($accessToken);
             $account        = $dropboxClient->getCurrentAccount();
             $storage        = $dropboxClient->getSpaceUsage();

@@ -39,7 +39,7 @@ class Update_1_3_5
 
             return '1.3.5';
         } catch (Exception $th) {
-            return new WP_Error('update_failed', 'Update to version 1.3.5 failed: ' . $th->getMessage());
+            return new WP_Error(400, 'Update to version 1.3.5 failed: ' . $th->getMessage());
         }
 
     }

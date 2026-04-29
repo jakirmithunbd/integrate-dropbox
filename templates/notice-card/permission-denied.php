@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Denied</title>
+    <title><?php echo esc_html($args['title'] ?? __('Access Denied', 'integrate-dropbox')); ?></title>
     <style>
         body {
             margin: 0;
@@ -72,7 +72,7 @@
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
         </svg>
-
+        
         <?php $ccpidb_title       = $args['title']             ?? __('Access Denied', 'integrate-dropbox'); ?>
         <?php $ccpidb_description = $args['description']       ?? __('You do not have permission to access this file.', 'integrate-dropbox'); ?>
 

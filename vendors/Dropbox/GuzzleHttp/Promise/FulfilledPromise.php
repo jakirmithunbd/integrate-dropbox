@@ -31,8 +31,8 @@ class FulfilledPromise implements PromiseInterface
     }
 
     public function then(
-        callable $onFulfilled = null,
-        callable $onRejected = null
+        ?callable $onFulfilled = null,
+        ?callable $onRejected = null
     ): PromiseInterface {
         // Return itself if there is no onFulfilled function.
         if (! $onFulfilled) {
@@ -55,7 +55,7 @@ class FulfilledPromise implements PromiseInterface
         return $p;
     }
 
-    public function otherwise(callable $onRejected): PromiseInterface
+    public function otherwise(?callable $onRejected): PromiseInterface
     {
         return $this->then(null, $onRejected);
     }

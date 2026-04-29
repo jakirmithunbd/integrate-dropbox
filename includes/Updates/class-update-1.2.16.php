@@ -8,6 +8,9 @@ use WP_Error;
 
 defined('ABSPATH') or exit('Hey, what are you doing here? You silly human!');
 
+// Migration file - direct database queries required for schema changes
+// phpcs:disable WordPress.DB.DirectDatabaseQuery
+
 
 class Update_1_2_16
 {
@@ -18,9 +21,10 @@ class Update_1_2_16
         try {
             $this->clean_deprecated_preview_url();
             $this->add_default_option();
+
             return '1.2.16';
         } catch (Exception $th) {
-            return new WP_Error('update_failed', 'Update to version 1.2.16 failed: ' . $th->getMessage());
+            return new WP_Error(400, 'Update to version 1.2.16 failed: ' . $th->getMessage());
         }
     }
 
@@ -53,3 +57,5 @@ class Update_1_2_16
         }
     }
 }
+
+// phpcs:enable WordPress.DB.DirectDatabaseQuery

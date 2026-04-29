@@ -21,7 +21,7 @@ final class Utils
      *
      * @param TaskQueueInterface|null $assign Optionally specify a new queue instance.
      */
-    public static function queue(TaskQueueInterface $assign = null): TaskQueueInterface
+    public static function queue(?TaskQueueInterface $assign = null): TaskQueueInterface
     {
         static $queue;
 
@@ -205,7 +205,7 @@ final class Utils
                 if (count($results) !== $count) {
                     throw new AggregateException(
                         'Not enough promises to fulfill count',
-                        $rejections
+                        $rejections // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
                     );
                 }
                 ksort($results);

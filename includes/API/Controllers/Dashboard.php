@@ -98,6 +98,7 @@ class Dashboard extends BaseController
 
             global $wpdb;
 
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $totalDBCacheFiles = (int) $wpdb->get_var(
                 $wpdb->prepare(
                     "SELECT COUNT(*) FROM %i",
@@ -105,6 +106,7 @@ class Dashboard extends BaseController
                 )
             );
 
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $totalShortcodes = (int) $wpdb->get_var(
                 $wpdb->prepare(
                     "SELECT COUNT(*) FROM %i",
@@ -112,6 +114,7 @@ class Dashboard extends BaseController
                 )
             );
 
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $userAccess = (int) $wpdb->get_var(
                 $wpdb->prepare(
                     "SELECT COUNT(*)
@@ -120,6 +123,7 @@ class Dashboard extends BaseController
                 )
             );
 
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $authorizedAccounts = (int) $wpdb->get_var(
                 $wpdb->prepare(
                     "SELECT COUNT(*)

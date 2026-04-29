@@ -39,14 +39,19 @@ abstract class BaseController
     /**
      * Check permissions - can be overridden by child classes
      */
-    public function checkPermission(WP_REST_Request $request): bool
+    public function hasAllPermission(): bool
     {
         return ccpidbHasUserAccessPage(['file_browser', 'settings', 'module_builder', 'media_library']);
     }
 
+    public function hasAnyPermission(): bool
+    {
+        return ccpidbHasUserAccessPage(['file_browser', 'settings', 'module_builder', 'media_library'], 'OR');
+    }
+
     public function managePermission(WP_REST_Request $request)
     {
-        if (ccpidbHasUserAccessPage('file_browser') || ccpidbHasUserAccessPage('settings') || ccpidbHasUserAccessPage('module_builder') || ccpidbHasUserAccessPage('media_library')) {
+        if ($this->hasAllPermission()) {
             return true;
         }
 
@@ -54,10 +59,6 @@ abstract class BaseController
 
         if (empty($shortcodeId)) {
             $shortcodeId = $request->get_header('X-Upload-shortcodeId');
-        }
-
-        if (empty($shortcodeId)) {
-            return new WP_Error('forbidden', 'You do not have permission to access this resource, Shortcode ID is missing.', [ 'status' => self::HTTP_FORBIDDEN ]);
         }
 
         $action        = '';
@@ -96,13 +97,41 @@ abstract class BaseController
             case strpos($route, '/integrate-dropbox/v1/file/open-in-dropbox') !== false && $method === 'GET':
                 $action = 'openInDropbox';
                 break;
+            case strpos($route, '/integrate-dropbox/v1/account/auth-url') !== false && $method === 'GET':
+                $action = 'authUrl';
+                break;
+            case strpos($route, '/integrate-dropbox/v1/file/download') !== false && $method === 'GET':
+                $action = 'download';
+                break;
+            case strpos($route, '/integrate-dropbox/v1/file/by-keys') !== false && $method === 'GET':
+                $action = 'byKeys';
+                break;
             default:
                 $action = '';
                 break;
         }
 
         if (empty($action)) {
-            return new WP_Error('forbidden', 'You do not have permission to access this resource.', [ 'status' => self::HTTP_FORBIDDEN ]);
+            return new WP_Error(403, 'You do not have permission to access this resource.', [ 'status' => self::HTTP_FORBIDDEN ]);
+        }
+
+        $permissionPrivileges = [
+            'file_browser'    => ['newFolder', 'rename', 'delete', 'upload', 'share', 'move', 'copy', 'search', 'tree', 'openInDropbox', 'download', 'byKeys', 'authUrl'],
+            'settings'        => ['authUrl'],
+            'media_library'   => ['move', 'rename', 'delete', 'newFolder', 'upload'],
+        ];
+
+        if (empty($shortcodeId)) {
+            $userAccess    = ccpidbGetCurrentUserAccess();
+            if (!empty($userAccess['folders']) && is_array($userAccess['folders'])) {
+                foreach ($permissionPrivileges as $page => $actions) {
+                    if (in_array($action, $actions) && ccpidbHasUserAccessPage($page)) {
+                        return true;
+                    }
+                }
+            }
+
+            return new WP_Error(403, 'You do not have permission to access this resource, Shortcode ID is missing.', [ 'status' => self::HTTP_FORBIDDEN ]);
         }
 
         if ($action === 'tree' && $request->get_param('fileKey') === null) {
@@ -118,7 +147,7 @@ abstract class BaseController
                     if (Helpers::hasShortcodePermission($shortcodeId, 'getFolder', $fileKey)) {
                         return true;
                     } else {
-                        return new WP_Error('forbidden', 'You do not have permission to access this folder.', [ 'status' => self::HTTP_FORBIDDEN ]);
+                        return new WP_Error(403, 'You do not have permission to access this folder.', [ 'status' => self::HTTP_FORBIDDEN ]);
                     }
                 } else {
                     return true;
@@ -138,7 +167,7 @@ abstract class BaseController
 
         foreach ($mergedKeys as $key) {
             if (!Helpers::hasShortcodePermission($shortcodeId, $action, $key)) {
-                return new WP_Error('forbidden', 'You do not have permission to access this resource.', [ 'status' => self::HTTP_FORBIDDEN ]);
+                return new WP_Error(403, 'You do not have permission to access this resource.', [ 'status' => self::HTTP_FORBIDDEN ]);
             }
         }
 
@@ -153,6 +182,11 @@ abstract class BaseController
     public function manageSettingsPermission(WP_REST_Request $request): bool
     {
         return ccpidbHasUserAccessPage('settings');
+    }
+
+    public function manageSettingsGetPermission(WP_REST_Request $request): bool
+    {
+        return ccpidbHasUserAccessPage(['settings', 'file_browser'], 'OR');
     }
 
     public function manageModuleBuilderPermission(WP_REST_Request $request): bool

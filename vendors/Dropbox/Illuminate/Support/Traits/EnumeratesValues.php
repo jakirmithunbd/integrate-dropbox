@@ -161,7 +161,7 @@ trait EnumeratesValues
      * @param (callable(int): TTimesValue)|null $callback
      * @return static<int, TTimesValue>
      */
-    public static function times($number, callable $callback = null)
+    public static function times($number, ?callable $callback = null)
     {
         if ($number < 1) {
             return new static();
@@ -220,7 +220,7 @@ trait EnumeratesValues
             ->each(function ($item) {
                 var_dump($item);
             });
-            
+
         return $this;
     }
 
@@ -303,13 +303,13 @@ trait EnumeratesValues
      * @param TValueDefault|(\Closure(): TValueDefault) $default
      * @return TValue|TValueDefault
      */
-    public function value($key, $default = null)
+    public function ccpidb_value($key, $default = null)
     {
         if ($value = $this->firstWhere($key)) {
-            return data_get($value, $key, $default);
+            return ccpidb_data_get($value, $key, $default);
         }
 
-        return value($default);
+        return ccpidb_value($default);
     }
 
     /**
@@ -329,7 +329,7 @@ trait EnumeratesValues
 
             if ($itemType !== $type && ! $item instanceof $type) {
                 throw new UnexpectedValueException(
-                    sprintf("Collection should only include '%s' items, but '%s' found.", $type, $itemType)
+                    sprintf("Collection should only include '%s' items, but '%s' found.", esc_html($type), esc_html($itemType))
                 );
             }
         });
@@ -524,7 +524,7 @@ trait EnumeratesValues
      * @param (callable($this): TWhenEmptyReturnType)|null $default
      * @return $this|TWhenEmptyReturnType
      */
-    public function whenEmpty(callable $callback, callable $default = null)
+    public function whenEmpty(?callable $callback, ?callable $default = null)
     {
         return $this->when($this->isEmpty(), $callback, $default);
     }
@@ -538,7 +538,7 @@ trait EnumeratesValues
      * @param (callable($this): TWhenNotEmptyReturnType)|null $default
      * @return $this|TWhenNotEmptyReturnType
      */
-    public function whenNotEmpty(callable $callback, callable $default = null)
+    public function whenNotEmpty(callable $callback, ?callable $default = null)
     {
         return $this->when($this->isNotEmpty(), $callback, $default);
     }
@@ -552,7 +552,7 @@ trait EnumeratesValues
      * @param (callable($this): TUnlessEmptyReturnType)|null $default
      * @return $this|TUnlessEmptyReturnType
      */
-    public function unlessEmpty(callable $callback, callable $default = null)
+    public function unlessEmpty(callable $callback, ?callable $default = null)
     {
         return $this->whenNotEmpty($callback, $default);
     }
@@ -566,7 +566,7 @@ trait EnumeratesValues
      * @param (callable($this): TUnlessNotEmptyReturnType)|null $default
      * @return $this|TUnlessNotEmptyReturnType
      */
-    public function unlessNotEmpty(callable $callback, callable $default = null)
+    public function unlessNotEmpty(callable $callback, ?callable $default = null)
     {
         return $this->whenEmpty($callback, $default);
     }
@@ -630,7 +630,7 @@ trait EnumeratesValues
     {
         $values = $this->getArrayableItems($values);
 
-        return $this->filter(fn ($item) => in_array(data_get($item, $key), $values, $strict));
+        return $this->filter(fn ($item) => in_array(ccpidb_data_get($item, $key), $values, $strict));
     }
 
     /**
@@ -667,7 +667,7 @@ trait EnumeratesValues
     public function whereNotBetween($key, $values)
     {
         return $this->filter(
-            fn ($item) => data_get($item, $key) < reset($values) || data_get($item, $key) > end($values)
+            fn ($item) => ccpidb_data_get($item, $key) < reset($values) || ccpidb_data_get($item, $key) > end($values)
         );
     }
 
@@ -683,7 +683,7 @@ trait EnumeratesValues
     {
         $values = $this->getArrayableItems($values);
 
-        return $this->reject(fn ($item) => in_array(data_get($item, $key), $values, $strict));
+        return $this->reject(fn ($item) => in_array(ccpidb_data_get($item, $key), $values, $strict));
     }
 
     /**
@@ -803,8 +803,8 @@ trait EnumeratesValues
             if (! is_array($result)) {
                 throw new UnexpectedValueException(sprintf(
                     "%s::reduceSpread expects reducer to return an array, but got a '%s' instead.",
-                    static::class,
-                    gettype($result)
+                    esc_html(static::class),
+                    esc_html(gettype($result))
                 ));
             }
         }
@@ -987,7 +987,7 @@ trait EnumeratesValues
     public function __get($key)
     {
         if (! in_array($key, static::$proxies)) {
-            throw new Exception("Property [{$key}] does not exist on this collection instance.");
+            throw new Exception(sprintf("Property '%s' does not exist on this collection instance.", esc_html($key)));
         }
 
         return new HigherOrderCollectionProxy($this, $key);
@@ -1057,7 +1057,7 @@ trait EnumeratesValues
         }
 
         return function ($item) use ($key, $operator, $value) {
-            $retrieved = data_get($item, $key);
+            $retrieved = ccpidb_data_get($item, $key);
 
             $strings = array_filter([$retrieved, $value], function ($value) {
                 return is_string($value) || (is_object($value) && method_exists($value, '__toString'));
@@ -1107,7 +1107,7 @@ trait EnumeratesValues
             return $value;
         }
 
-        return fn ($item) => data_get($item, $value);
+        return fn ($item) => ccpidb_data_get($item, $value);
     }
 
     /**

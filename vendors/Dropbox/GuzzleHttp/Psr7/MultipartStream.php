@@ -87,7 +87,7 @@ final class MultipartStream implements StreamInterface
     {
         foreach (['contents', 'name'] as $key) {
             if (! array_key_exists($key, $element)) {
-                throw new \InvalidArgumentException("A '{$key}' key is required");
+                throw new \InvalidArgumentException(sprintf("A '%s' key is required", esc_html((string) $key)));
             }
         }
 

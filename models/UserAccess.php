@@ -2,6 +2,10 @@
 
 namespace CodeConfig\IDB\Models;
 
+defined('ABSPATH') || exit('No direct script access allowed');
+
+// phpcs:disable WordPress.DB.DirectDatabaseQuery
+
 use CodeConfig\IDB\Utils\Helpers;
 use CodeConfig\IDB\Utils\Singleton;
 
@@ -39,6 +43,7 @@ class UserAccess extends BaseModel
                 'updatedAt'  => current_time('mysql', 1),
             ];
 
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->update(
                 $this->table,
                 $data,
@@ -71,6 +76,7 @@ class UserAccess extends BaseModel
     public function get($id)
     {
         global $wpdb;
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
         $result = $wpdb->get_row($wpdb->prepare("SELECT * FROM %i WHERE id = %d", $this->table, $id), ARRAY_A);
 
         if ($result) {
@@ -114,7 +120,7 @@ class UserAccess extends BaseModel
             $query       .= $wpdb->prepare(" AND value = %s", $value);
         }
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery
         $result = $wpdb->get_row($query, ARRAY_A);
 
         if (!empty($result)) {
@@ -155,6 +161,7 @@ class UserAccess extends BaseModel
     public function getAll()
     {
         global $wpdb;
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
         $results = $wpdb->get_results($wpdb->prepare("SELECT * FROM %i ORDER BY createdAt DESC", $this->table), ARRAY_A);
 
         foreach ($results as &$record) {
@@ -216,3 +223,5 @@ class UserAccess extends BaseModel
         }
     }
 }
+
+// phpcs:enable WordPress.DB.DirectDatabaseQuery

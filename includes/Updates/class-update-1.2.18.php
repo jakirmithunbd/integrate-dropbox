@@ -19,9 +19,10 @@ class Update_1_2_18
         try {
             $this->migration_options();
             $this->migration_tables();
+
             return '1.2.18';
         } catch (Exception $th) {
-            return new WP_Error('update_failed', 'Update to version 1.2.18 failed: ' . $th->getMessage());
+            return new WP_Error(400, 'Update to version 1.2.18 failed: ' . $th->getMessage());
         }
     }
 

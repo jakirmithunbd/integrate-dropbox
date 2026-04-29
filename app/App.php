@@ -34,7 +34,7 @@ class App {
     public function getFile( $fileKey, $from = 'cache', $output = 'object' ) {
         $file = $this->model->getFile( $fileKey, $output );
         if ( empty( $file ) || is_wp_error( $file ) ) {
-            return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+            return new WP_Error(404, __( 'File not found', 'integrate-dropbox' ));
         }
         if ( 'server' === $from && !empty( $file->getPath() ) && !empty( $file->getAccountId() ) ) {
             $file = ( new APIFiles($file->getAccountId()) )->getFile( $file->getPath() );
@@ -117,7 +117,7 @@ class App {
         }
         $folder = $this->model->getFolder( $folderKey, $config );
         if ( is_wp_error( $folder ) ) {
-            return new WP_Error('folder_getting_error', __( 'Error: ', 'integrate-dropbox' ) . $folder->get_error_message());
+            return new WP_Error(400, __( 'Error: ', 'integrate-dropbox' ) . $folder->get_error_message());
         }
         $files = $folder['files'] ?? [];
         $isNewFolder = false;
@@ -146,7 +146,7 @@ class App {
             wp_cache_flush_group( "ccpidb_files_" . md5( "{$path}_{$this->accountId}" ) );
             $folder = $this->model->getFolder( $folderKey, $config );
             if ( is_wp_error( $folder ) ) {
-                return new WP_Error('folder_getting_error', __( 'Error: ', 'integrate-dropbox' ) . $folder->get_error_message());
+                return new WP_Error(400, __( 'Error: ', 'integrate-dropbox' ) . $folder->get_error_message());
             }
         }
         $folder['isNewFolder'] = $isNewFolder;
@@ -160,7 +160,7 @@ class App {
             } else {
                 $file = $this->model->getFile( $folderKey );
                 if ( empty( $file ) || is_wp_error( $file ) ) {
-                    return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+                    return new WP_Error(404, __( 'File not found', 'integrate-dropbox' ));
                 }
                 $path = $file->getPath();
             }
@@ -196,7 +196,7 @@ class App {
     public function deleteFiles( $fileKeys ) {
         $paths = $this->model->getPathsByKeys( $fileKeys );
         if ( empty( $paths ) || is_wp_error( $paths ) ) {
-            return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+            return new WP_Error(404, __( 'File not found', 'integrate-dropbox' ));
         }
         $accountId = $this->model->getAccountIdByFileKey( $fileKeys[0] );
         $apiFiles = new APIFiles($accountId);
@@ -212,7 +212,7 @@ class App {
         } else {
             $file = $this->model->getFile( $fileKey );
             if ( empty( $file ) || is_wp_error( $file ) ) {
-                return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+                return new WP_Error(404, __( 'File not found', 'integrate-dropbox' ));
             }
             $this->accountId = $file->getAccountId();
             $path = $file->getPath();
@@ -243,14 +243,14 @@ class App {
     public function generateSharedLink( $fileKey, $options = [] ) {
         $file = $this->model->getFile( $fileKey );
         if ( empty( $file ) || is_wp_error( $file ) ) {
-            return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+            return new WP_Error(404, __( 'File not found', 'integrate-dropbox' ));
         }
         $sharedKey = $this->model->getSharedKey( $fileKey, [
             'expireIn' => $options['expireIn'] ?? 3600,
             'password' => $options['password'] ?? null,
         ] );
         if ( empty( $sharedKey ) || is_wp_error( $sharedKey ) ) {
-            return new WP_Error('shared_link_error', __( 'Unable to generate shared link.', 'integrate-dropbox' ));
+            return new WP_Error(401, __( 'Unable to generate shared link.', 'integrate-dropbox' ));
         }
         $link = ccpidbGetUrl(
             'share',
@@ -265,7 +265,7 @@ class App {
     public function generateDownloadLink( $fileKey, $options = [] ) {
         $file = $this->model->getFile( $fileKey );
         if ( empty( $file ) || is_wp_error( $file ) ) {
-            return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+            return new WP_Error(404, __( 'File not found', 'integrate-dropbox' ));
         }
         $downloadKey = $this->model->getDownloadKey( $fileKey, [
             'expireIn' => $options['expireIn'] ?? 3600,
@@ -276,7 +276,7 @@ class App {
             return $downloadKey;
         }
         if ( empty( $downloadKey ) ) {
-            return new WP_Error('download_link_error', __( 'Unable to generate download link.', 'integrate-dropbox' ));
+            return new WP_Error(401, __( 'Unable to generate download link.', 'integrate-dropbox' ));
         }
         $link = ccpidbGetUrl(
             'download',
@@ -291,10 +291,10 @@ class App {
     public function getShareLink( $fileKey ) {
         $file = $this->model->getFile( $fileKey );
         if ( empty( $file ) || is_wp_error( $file ) ) {
-            return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+            return new WP_Error(404, __( 'File not found', 'integrate-dropbox' ));
         }
         if ( $file->isDir() ) {
-            return new WP_Error('folder_premium_feature', __( 'Generating shared links/download links for folders is a premium feature. Please upgrade to the premium version to access this feature.', 'integrate-dropbox' ));
+            return new WP_Error(401, __( 'Generating shared links/download links for folders is a premium feature. Please upgrade to the premium version to access this feature.', 'integrate-dropbox' ));
         }
         if ( !empty( $file->getShareLink() ) && esc_url( $file->getShareLink() ) ) {
             return $file->getShareLink();
@@ -323,7 +323,7 @@ class App {
     public function getEmbeddedLink( $fileKey ) {
         $file = $this->model->getFile( $fileKey );
         if ( empty( $file ) || is_wp_error( $file ) ) {
-            return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+            return new WP_Error(404, __( 'File not found', 'integrate-dropbox' ));
         }
         if ( false !== $file->getAdditionalData( 'canPreviewByCloud' ) || in_array( $file->getExtension(), [
             'pdf',
@@ -391,7 +391,7 @@ class App {
             $this->accountId = $account->getId();
         }
         if ( empty( $this->accountId ) ) {
-            return new WP_Error('no_account', __( 'Account ID is required.', 'integrate-dropbox' ));
+            return new WP_Error(404, __( 'Account ID is required.', 'integrate-dropbox' ));
         }
         if ( $options['from'] === 'server' ) {
             $searchPath = ( $options['scope'] === 'global' ? '/' : $path );
@@ -420,7 +420,7 @@ class App {
         if ( !empty( $folderKey ) && $folderKey !== '/' ) {
             $folder = $this->model->getFile( $folderKey );
             if ( empty( $folder ) || is_wp_error( $folder ) ) {
-                return new WP_Error('folder_not_found', __( 'Folder not found', 'integrate-dropbox' ));
+                return new WP_Error(404, __( 'Folder not found', 'integrate-dropbox' ));
             }
             $folderPath = $folder->getPath();
             $accountId = $folder->getAccountId();
@@ -428,18 +428,18 @@ class App {
         if ( $folderKey === '/' ) {
             $account = Accounts::getInstance()->getAccount();
             if ( !$account instanceof \CodeConfig\IDB\App\Account ) {
-                return new WP_Error('no_account', __( 'No account found for uploading to root directory.', 'integrate-dropbox' ));
+                return new WP_Error(404, __( 'No account found for uploading to root directory.', 'integrate-dropbox' ));
             }
             $accountId = $account->getId();
             $isTeamEnabled = $account->isTeam();
             if ( $isTeamEnabled ) {
-                return new WP_Error('invalid_folder', __( 'Uploading files to root folder is not allowed for team accounts.', 'integrate-dropbox' ));
+                return new WP_Error(400, __( 'Uploading files to root folder is not allowed for team accounts.', 'integrate-dropbox' ));
             }
             $this->accountId = $accountId;
         }
         $apiFiles = new APIFiles($accountId);
         if ( empty( $file['name'] ) || strpos( $file['name'], '.' ) === false ) {
-            return new WP_Error('invalid_file', __( 'Invalid file data', 'integrate-dropbox' ));
+            return new WP_Error(400, __( 'Invalid file data', 'integrate-dropbox' ));
         }
         $path = ( $folderPath === '/' ? '/' . $file['name'] : $folderPath . '/' . $file['name'] );
         $file = $apiFiles->directUploadFile( $file['tmp_name'], $path );
@@ -451,13 +451,13 @@ class App {
 
     public function uploadFileChunkStart( $folderKey, $dataChunk ) {
         if ( empty( $dataChunk ) || !is_string( $dataChunk ) ) {
-            return new WP_Error('invalid_parameters', __( 'Invalid parameters', 'integrate-dropbox' ));
+            return new WP_Error(400, __( 'Invalid parameters', 'integrate-dropbox' ));
         }
         $accountId = $this->accountId;
         if ( !empty( $folderKey ) && $folderKey !== '/' ) {
             $folder = $this->model->getFile( $folderKey );
             if ( empty( $folder ) || is_wp_error( $folder ) ) {
-                return new WP_Error('folder_not_found', __( 'Folder not found', 'integrate-dropbox' ));
+                return new WP_Error(404, __( 'Folder not found', 'integrate-dropbox' ));
             }
             $accountId = $folder->getAccountId();
         }
@@ -472,13 +472,13 @@ class App {
         $dataChunk
     ) {
         if ( empty( $dataChunk ) || !is_string( $dataChunk ) || empty( $sessionId ) || !is_int( $offset ) ) {
-            return new WP_Error('invalid_parameters', __( 'Invalid parameters', 'integrate-dropbox' ));
+            return new WP_Error(400, __( 'Invalid parameters', 'integrate-dropbox' ));
         }
         $accountId = $this->accountId;
         if ( !empty( $folderKey ) && $folderKey !== '/' ) {
             $folder = $this->model->getFile( $folderKey );
             if ( empty( $folder ) || is_wp_error( $folder ) ) {
-                return new WP_Error('folder_not_found', __( 'Folder not found', 'integrate-dropbox' ));
+                return new WP_Error(404, __( 'Folder not found', 'integrate-dropbox' ));
             }
             $accountId = $folder->getAccountId();
         }
@@ -495,14 +495,14 @@ class App {
         $params = []
     ) {
         if ( empty( $dataChunk ) || !is_string( $dataChunk ) || empty( $sessionId ) || !is_int( $offset ) ) {
-            return new WP_Error('invalid_parameters', __( 'Invalid parameters', 'integrate-dropbox' ));
+            return new WP_Error(400, __( 'Invalid parameters', 'integrate-dropbox' ));
         }
         $accountId = $this->accountId;
         $folderPath = '/';
         if ( !empty( $folderKey ) && $folderKey !== '/' ) {
             $folder = $this->model->getFile( $folderKey );
             if ( empty( $folder ) || is_wp_error( $folder ) ) {
-                return new WP_Error('folder_not_found', __( 'Folder not found', 'integrate-dropbox' ));
+                return new WP_Error(404, __( 'Folder not found', 'integrate-dropbox' ));
             }
             $folderPath = $folder->getPath();
             $accountId = $folder->getAccountId();
@@ -520,7 +520,7 @@ class App {
 
     public function getUploadedFile( $token ) {
         if ( empty( $token ) ) {
-            return new WP_Error('invalid_parameters', __( 'Invalid parameters', 'integrate-dropbox' ));
+            return new WP_Error(400, __( 'Invalid parameters', 'integrate-dropbox' ));
         }
         $path = Helpers::decode( $token );
         $apiFiles = new APIFiles($this->accountId);
@@ -532,7 +532,7 @@ class App {
         $from_path = $this->model->getPathsByKeys( $fileKeys );
         $to_path = $this->model->getPathsByKeys( $destination );
         if ( empty( $from_path ) || is_wp_error( $to_path ) ) {
-            return new WP_Error('files_not_found', __( 'Files not found', 'integrate-dropbox' ));
+            return new WP_Error(404, __( 'Files not found', 'integrate-dropbox' ));
         }
         $accountId = $this->model->getAccountIdByFileKey( $fileKeys[0] );
         $apiFiles = new APIFiles($accountId);
@@ -543,7 +543,7 @@ class App {
         $from_path = $this->model->getPathsByKeys( $fileKeys );
         $to_path = $this->model->getPathsByKeys( $destination );
         if ( empty( $from_path ) || is_wp_error( $to_path ) ) {
-            return new WP_Error('files_not_found', __( 'Files not found', 'integrate-dropbox' ));
+            return new WP_Error(404, __( 'Files not found', 'integrate-dropbox' ));
         }
         $accountId = $this->model->getAccountIdByFileKey( $fileKeys[0] );
         $apiFiles = new APIFiles($accountId);
@@ -555,7 +555,7 @@ class App {
         if ( !empty( $shortcodeId ) ) {
             $folders = Helpers::validateShortcodeKey( $shortcodeId, $folderKey );
             if ( empty( $folderKeys ) || is_wp_error( $folderKeys ) ) {
-                return new WP_Error('forbidden', 'You do not have permission to access this resource.', [
+                return new WP_Error(403, 'You do not have permission to access this resource.', [
                     'status' => 403,
                 ]);
             }
@@ -563,7 +563,7 @@ class App {
         } else {
             $userAccess = ccpidbGetCurrentUserAccess();
             if ( empty( $userAccess ) ) {
-                return new WP_Error('forbidden', 'You do not have permission to access this resource.', [
+                return new WP_Error(403, 'You do not have permission to access this resource.', [
                     'status' => 403,
                 ]);
             }
@@ -572,7 +572,7 @@ class App {
                 if ( '/' === $folderKey ) {
                     $folderKeys = $folders;
                 } elseif ( Helpers::validateFileKey( $folderKey, $folders ) === false ) {
-                    return new WP_Error('forbidden', 'You do not have permission to access this resource.', [
+                    return new WP_Error(403, 'You do not have permission to access this resource.', [
                         'status' => 403,
                     ]);
                 }
@@ -609,7 +609,7 @@ class App {
         $size = ccpidbGetThumbnailSize( $size );
         $file = $this->model->getFile( $fileKey );
         if ( empty( $file ) || is_wp_error( $file ) ) {
-            return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+            return new WP_Error(404, __( 'File not found', 'integrate-dropbox' ));
         }
         $apiFiles = new APIFiles($file->getAccountId());
         $thumbnailData = $apiFiles->getThumbnail( $file->getPath(), $size, $format );

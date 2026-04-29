@@ -5,6 +5,7 @@ namespace CodeConfig\IDB\App;
 use CodeConfig\IDB\Models\Account as AccountModel;
 use CodeConfig\IDB\Models\Files;
 use CodeConfig\IDB\Utils\Singleton;
+use Exception;
 use function is_bool;
 use WP_Error;
 defined( 'ABSPATH' ) || exit( 'No direct script access allowed' );
@@ -168,8 +169,8 @@ class Accounts {
             ];
             $updatedAccount = new Account($accountData);
             return $this->updateAccount( $updatedAccount );
-        } catch ( \Exception $e ) {
-            return new WP_Error('sync_account_failed', 'Failed to sync account: ' . $e->getMessage());
+        } catch ( Exception $e ) {
+            return new WP_Error(400, 'Failed to sync account: ' . $e->getMessage());
         }
     }
 
@@ -191,17 +192,14 @@ class Accounts {
     /**
      * Updates an existing account in the database.
      *
-     * @param string $accountId The ID of the account to update.
-     * @param array $updatedData The updated account data.
-     *
      * @return Account|WP_Error The updated account object, or a WP_Error object on failure.
      */
     public function updateAccount( Account $updatedAccount ) {
         if ( !$updatedAccount instanceof Account ) {
-            return new WP_Error('invalid_account', 'The provided account is not a valid Account instance.');
+            return new WP_Error(404, 'The provided account is not a valid Account instance.');
         }
         if ( !$updatedAccount->getId() ) {
-            return new WP_Error('missing_account_id', 'The account ID is missing.');
+            return new WP_Error(404, 'The account ID is missing.');
         }
         $result = $this->model->updateAccount( $updatedAccount );
         if ( !is_wp_error( $result ) ) {

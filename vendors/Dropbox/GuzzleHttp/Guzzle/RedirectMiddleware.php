@@ -156,7 +156,7 @@ class RedirectMiddleware
         $max                         = $options['allow_redirects']['max'];
 
         if ($options['__redirect_count'] > $max) {
-            throw new TooManyRedirectsException("Will not follow more than {$max} redirects", $request, $response);
+            throw new TooManyRedirectsException(esc_html(sprintf("Will not follow more than %d redirects", $max)), $request, $response); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
         }
     }
 
@@ -224,7 +224,7 @@ class RedirectMiddleware
 
         // Ensure that the redirect URI is allowed based on the protocols.
         if (! \in_array($location->getScheme(), $protocols)) {
-            throw new BadResponseException(\sprintf('Redirect URI, %s, does not use one of the allowed redirect protocols: %s', $location, \implode(', ', $protocols)), $request, $response);
+            throw new BadResponseException(\sprintf('Redirect URI, %s, does not use one of the allowed redirect protocols: %s', esc_html($location), esc_html(\implode(', ', $protocols))), $request, $response); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
         }
 
         return $location;

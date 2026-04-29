@@ -35,7 +35,7 @@ trait StreamDecoratorTrait
             return $this->stream;
         }
 
-        throw new \UnexpectedValueException("$name not found on class");
+        throw new \UnexpectedValueException(sprintf("%s not found on class", esc_html($name)));
     }
 
     public function __toString(): string
@@ -50,7 +50,7 @@ trait StreamDecoratorTrait
             if (\PHP_VERSION_ID  >= 70400) {
                 throw $e;
             }
-            trigger_error(sprintf('%s::__toString exception: %s', self::class, (string) $e), E_USER_ERROR);
+            trigger_error(sprintf('%s::__toString exception: %s', self::class, esc_html((string) $e)), E_USER_ERROR);
 
             return '';
         }

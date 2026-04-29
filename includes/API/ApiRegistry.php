@@ -6,7 +6,6 @@ use CodeConfig\IDB\API\Controllers\Account;
 use CodeConfig\IDB\API\Controllers\File;
 use CodeConfig\IDB\API\Controllers\Folder;
 use CodeConfig\IDB\API\Controllers\MediaLibrary;
-use CodeConfig\IDB\API\Controllers\Menus;
 use CodeConfig\IDB\API\Controllers\Notices;
 use CodeConfig\IDB\API\Controllers\Photo;
 use CodeConfig\IDB\API\Controllers\Settings;
@@ -35,7 +34,6 @@ class ApiRegistry
             'shortcode'     => new Shortcode(),
             'notice'        => new Notices(),
             'users'         => new Users(),
-            'menus'         => new Menus(),
             'file'          => new File(),
             'folder'        => new Folder(),
             'photo'         => new Photo(),

@@ -43,7 +43,7 @@ final class FnStream implements StreamInterface
      */
     public function __get(string $name): void
     {
-        throw new \BadMethodCallException(str_replace('_fn_', '', $name)
+        throw new \BadMethodCallException(esc_html(str_replace('_fn_', '', $name))
             . '() is not implemented in the FnStream');
     }
 
@@ -98,7 +98,7 @@ final class FnStream implements StreamInterface
             if (\PHP_VERSION_ID  >= 70400) {
                 throw $e;
             }
-            trigger_error(sprintf('%s::__toString exception: %s', self::class, (string) $e), E_USER_ERROR);
+            trigger_error(sprintf('%s::__toString exception: %s', self::class, esc_html((string) $e)), E_USER_ERROR);
 
             return '';
         }

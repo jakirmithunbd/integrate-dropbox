@@ -30,7 +30,7 @@ class Settings extends BaseController
             [
                 'methods'             => WP_REST_Server::READABLE,
                 'callback'            => [$this, 'getSettings'],
-                'permission_callback' => [$this, 'managePermission'],
+                'permission_callback' => [$this, 'hasAnyPermission'],
                 'args'                => $this->getCollectionParams(),
             ],
             [
@@ -45,7 +45,7 @@ class Settings extends BaseController
         register_rest_route($this->namespace, "{$this->rest_base}/(?P<key>[a-zA-Z0-9_-]+)", [
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => [$this, 'getSetting'],
-            'permission_callback' => [$this, 'managePermission'],
+            'permission_callback' => [$this, 'hasAnyPermission'],
             'args'                => [
                 'key' => [
                     'required'    => true,

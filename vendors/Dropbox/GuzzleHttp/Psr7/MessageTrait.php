@@ -201,7 +201,7 @@ trait MessageTrait
             if (! is_scalar($value) && null !== $value) {
                 throw new \InvalidArgumentException(sprintf(
                     'Header value must be scalar or null but %s provided.',
-                    is_object($value) ? get_class($value) : gettype($value)
+                    is_object($value) ? esc_html(get_class($value)) : esc_html(gettype($value))
                 ));
             }
 
@@ -222,13 +222,13 @@ trait MessageTrait
         if (! is_string($header)) {
             throw new \InvalidArgumentException(sprintf(
                 'Header name must be a string but %s provided.',
-                is_object($header) ? get_class($header) : gettype($header)
+                is_object($header) ? esc_html(get_class($header)) : esc_html(gettype($header))
             ));
         }
 
         if (! preg_match('/^[a-zA-Z0-9\'`#$%&*+.^_|~!-]+$/D', $header)) {
             throw new \InvalidArgumentException(
-                sprintf('"%s" is not valid header name.', $header)
+                sprintf('"%s" is not valid header name.', esc_html($header))
             );
         }
     }
@@ -258,7 +258,7 @@ trait MessageTrait
         // folding is not likely to break any legitimate use case.
         if (! preg_match('/^[\x20\x09\x21-\x7E\x80-\xFF]*$/D', $value)) {
             throw new \InvalidArgumentException(
-                sprintf('"%s" is not valid header value.', $value)
+                sprintf('"%s" is not valid header value.', esc_html($value))
             );
         }
     }

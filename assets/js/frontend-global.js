@@ -1,0 +1,2 @@
+;"use strict";(globalThis.webpackChunkintegrate_dropbox=globalThis.webpackChunkintegrate_dropbox||[]).push([[125],{6463(){var e;(e=jQuery)('[data-elementor-open-lightbox="yes"]').each(function(){e(this).attr("href",function(e,t){return t?t.replace(/\/$/,""):t})})}},e=>{e(e.s=6463)}]);
+//# sourceMappingURL=frontend-global.js.map

@@ -4,6 +4,7 @@ namespace CodeConfig\IDB\API\Controllers;
 
 use CodeConfig\IDB\API\BaseController;
 use CodeConfig\IDB\Models\Shortcode as ShortcodeModel;
+use Exception;
 
 use function in_array;
 use function is_array;
@@ -173,7 +174,7 @@ class Shortcode extends BaseController
             return $this->successResponse([
                 'shortcode' => $template,
             ]);
-        } catch (\Throwable $e) {
+        } catch (Exception $e) {
             return $this->handleException($e, __('Failed to retrieve default template.', 'integrate-dropbox'));
         }
     }
@@ -204,7 +205,7 @@ class Shortcode extends BaseController
             return $this->successResponse([
                 'shortcode' => $shortcode,
             ]);
-        } catch (\Throwable $e) {
+        } catch (Exception $e) {
             return $this->handleException($e, __('Failed to create shortcode.', 'integrate-dropbox'));
         }
     }
@@ -252,7 +253,7 @@ class Shortcode extends BaseController
             return $this->successResponse([
                 'shortcode' => $shortcode,
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->handleException($e, __('Failed to retrieve shortcode.', 'integrate-dropbox'));
         }
     }
@@ -278,14 +279,10 @@ class Shortcode extends BaseController
 
         try {
             $shortcodes   = ShortcodeModel::getInstance()->getAll($queryArgs);
-            $totalResult  = ShortcodeModel::getInstance()->totalCount($queryArgs);
+            $totalResult  = ShortcodeModel::getInstance()->countRecords($queryArgs);
 
             if (is_wp_error($shortcodes)) {
                 return $this->errorResponse($shortcodes->get_error_message(), $this->getErrorStatusCode($shortcodes));
-            }
-
-            if (is_wp_error($totalResult)) {
-                return $this->errorResponse($totalResult->get_error_message(), $this->getErrorStatusCode($totalResult));
             }
 
             $total      = (int) $totalResult;
@@ -300,7 +297,7 @@ class Shortcode extends BaseController
                 'page'       => (int) $queryArgs['page'],
             ]);
 
-        } catch (\Throwable $e) {
+        } catch (Exception $e) {
             return $this->handleException($e, __('Failed to retrieve shortcodes.', 'integrate-dropbox'));
         }
     }
@@ -331,7 +328,7 @@ class Shortcode extends BaseController
             return $this->successResponse([
                 'shortcode' => $shortcode,
             ]);
-        } catch (\Throwable $e) {
+        } catch (Exception $e) {
             return $this->handleException($e, __('Failed to update shortcode.', 'integrate-dropbox'));
         }
     }
@@ -348,7 +345,7 @@ class Shortcode extends BaseController
             }
 
             return $this->successResponse([], __('Shortcode deleted successfully.', 'integrate-dropbox'));
-        } catch (\Throwable $e) {
+        } catch (Exception $e) {
             return $this->handleException($e, __('Failed to delete shortcode.', 'integrate-dropbox'));
         }
     }
@@ -378,7 +375,7 @@ class Shortcode extends BaseController
             return $this->successResponse([
                 'duplicated' => $result,
             ], __('Shortcode(s) duplicated successfully.', 'integrate-dropbox'));
-        } catch (\Throwable $e) {
+        } catch (Exception $e) {
             return $this->handleException($e, __('Failed to duplicate shortcode.', 'integrate-dropbox'));
         }
     }

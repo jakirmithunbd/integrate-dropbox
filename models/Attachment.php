@@ -4,6 +4,8 @@ namespace CodeConfig\IDB\Models;
 
 defined('ABSPATH') || exit('No direct script access allowed');
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery
+
 class Attachment
 {
     public static function get($folderPath)
@@ -75,7 +77,7 @@ class Attachment
             'post_type'         => 'attachment',
             'post_status'       => 'inherit',
             'numberposts'       => -1,
-            'meta_query'        => [
+            'meta_query'        => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
                 [
                     'key'     => '_ccpidb_media_file_key',
                     'compare' => 'EXISTS',
@@ -88,3 +90,5 @@ class Attachment
         }
     }
 }
+
+// phpcs:enable WordPress.DB.DirectDatabaseQuery
