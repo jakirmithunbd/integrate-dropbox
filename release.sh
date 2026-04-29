@@ -23,12 +23,6 @@ if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 
-CURRENT_CHECK=$(grep -m1 "^\s*\* Version:" "$PLUGIN_FILE" | awk '{print $NF}')
-if [ "$CURRENT_CHECK" = "$VERSION" ]; then
-  echo "❌ Plugin is already at version $VERSION. Use a higher version number."
-  exit 1
-fi
-
 TAG="v$VERSION"
 
 # ── Check working tree is clean ───────────────────────────────────────────────
