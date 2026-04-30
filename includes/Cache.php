@@ -2,6 +2,8 @@
 
 namespace CodeConfig\IDB;
 
+use CodeConfig\IDB\Models\Files;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -93,7 +95,6 @@ class Cache
      */
     public function saveFile($fileData, $filename, $size, $ext = 'webp')
     {
-
         if (! $this->fs || ! $this->isValidSize($size)) {
             return false;
         }
@@ -109,13 +110,18 @@ class Cache
 
             $filePath = $sizeDir . sanitize_file_name($filename) . '.' . $ext;
 
-            if ($this->fs->exists($filePath)) {
-                return true;
+            $fileExists = $this->fs->exists($filePath);
+
+            if (! $fileExists) {
+                if (! $this->fs->put_contents($filePath, $fileData, FS_CHMOD_FILE)) {
+                    error_log("[Cache] Failed to write file: {$filePath}");
+
+                    return false;
+                }
             }
 
-            if (! $this->fs->put_contents($filePath, $fileData, FS_CHMOD_FILE)) {
-                return false;
-            }
+            // Always update DB record to ensure sync between filesystem and database
+            Files::getInstance()->saveCachedData($filename, $size);
 
             return true;
 
@@ -212,20 +218,92 @@ class Cache
     /**
      * Clear entire cache directory
      *
+     * @param string|null $size
      * @return bool
      */
-    public function clearCache()
+    public function clearCache($size = null)
     {
         if (! $this->fs) {
             return false;
         }
 
-        if ($this->fs->exists($this->baseDir)) {
-            if (! $this->fs->delete($this->baseDir, true)) {
-                return false;
+        $validSize = $size ? $this->isValidSize($size) : true;
+
+        if ($size && ! $validSize) {
+            return false;
+        }
+
+        if ($size) {
+            $sizeDir = trailingslashit($this->baseDir . $size);
+            if ($this->fs->exists($sizeDir)) {
+                if (! $this->fs->delete($sizeDir, true)) {
+                    error_log("[Cache] Failed to clear cache directory for size: {$size}");
+
+                    return false;
+                }
+            }
+        } else {
+            if ($this->fs->exists($this->baseDir)) {
+                if (! $this->fs->delete($this->baseDir, true)) {
+                    error_log('[Cache] Failed to clear cache directory.');
+
+                    return false;
+                }
             }
         }
 
         return true;
+    }
+
+    public function calculateCacheSizeAndCount()
+    {
+        if (! $this->fs) {
+            return [];
+        }
+
+        $filesData  = array_fill_keys($this->allowedSizes, ['size' => 0, 'count' => 0]);
+        $totalFiles = ['size' => 0, 'count' => 0];
+
+        foreach ($this->allowedSizes as $size) {
+            $sizeDir = trailingslashit($this->baseDir . $size);
+
+            if (! $this->fs->exists($sizeDir)) {
+                continue;
+            }
+
+            $files = $this->fs->dirlist($sizeDir);
+
+            if (empty($files)) {
+                continue;
+            }
+
+            foreach ($files as $file) {
+                if (! empty($file['isdir'])) {
+                    continue;
+                }
+
+                $filesData[$size]['count']++;
+                $filesData[$size]['size'] += (int) ($file['size'] ?? 0);
+                $totalFiles['size']       += (int) ($file['size'] ?? 0);
+            }
+
+            $filesData[$size]['size'] = size_format($filesData[$size]['size']);
+            $totalFiles['count'] += $filesData[$size]['count'];
+        }
+
+        $totalFiles['size'] = size_format($totalFiles['size']);
+
+        $filesData['total'] = $totalFiles;
+
+        $finalResult = [];
+        foreach ($filesData as $size => $data) {
+            $finalResult[] = [
+                'key'   => $size,
+                'size'  => $data['size']  ?? '0 B',
+                'count' => $data['count'] ?? 0,
+            ];
+        }
+
+        return $finalResult;
     }
 }

@@ -70,6 +70,46 @@ class File extends BaseController
                         'default'  => null,
                     ],
                 ],
+            ],
+            [
+                'methods'              => WP_REST_Server::EDITABLE,
+                'callback'             => [$this, 'updateShareLink'],
+                'permission_callback'  => [$this, 'managePermission'],
+                'args'                 => [
+                    'shareLinkId' => [
+                        'required' => true,
+                        'type'     => 'string',
+                    ],
+                    'fileKey'    => [
+                        'required' => true,
+                        'type'     => 'string',
+                    ],
+                    'expiry'   => [
+                        'required' => false,
+                        'type'     => 'integer',
+                        'default'  => null,
+                    ],
+                    'password' => [
+                        'required' => false,
+                        'type'     => 'string',
+                        'default'  => null,
+                    ],
+                ],
+            ],
+            [
+                'methods'             => WP_REST_Server::DELETABLE,
+                'callback'            => [$this, 'deleteShareLink'],
+                'permission_callback' => [$this, 'managePermission'],
+                'args'                => [
+                    'shareLinkId' => [
+                        'required' => true,
+                        'type'     => 'string',
+                    ],
+                    'fileKey'    => [
+                        'required' => true,
+                        'type'     => 'string',
+                    ],
+                ],
             ]
         ]);
 
@@ -98,6 +138,51 @@ class File extends BaseController
                         'required' => false,
                         'type'     => 'string',
                         'default'  => null,
+                    ],
+                ],
+            ],
+            [
+                'methods'              => WP_REST_Server::EDITABLE,
+                'callback'             => [$this, 'updateDownloadLink'],
+                'permission_callback'  => [$this, 'managePermission'],
+                'args'                 => [
+                    'downloadLinkId' => [
+                        'required' => true,
+                        'type'     => 'string',
+                    ],
+                    'fileKey'    => [
+                        'required' => true,
+                        'type'     => 'string',
+                    ],
+                    'expiry'   => [
+                        'required' => false,
+                        'type'     => 'integer',
+                        'default'  => null,
+                    ],
+                    'limit' => [
+                        'required' => false,
+                        'type'     => 'integer',
+                        'default'  => null,
+                    ],
+                    'password' => [
+                        'required' => false,
+                        'type'     => 'string',
+                        'default'  => null,
+                    ],
+                ],
+            ],
+            [
+                'methods'             => WP_REST_Server::DELETABLE,
+                'callback'            => [$this, 'deleteDownloadLink'],
+                'permission_callback' => [$this, 'managePermission'],
+                'args'                => [
+                    'fileKey'    => [
+                        'required' => true,
+                        'type'     => 'string',
+                    ],
+                    'downloadLinkId' => [
+                        'required' => true,
+                        'type'     => 'string',
                     ],
                 ],
             ]
@@ -158,6 +243,60 @@ class File extends BaseController
                 'permission_callback' => [$this, 'managePermission'],
             ]
         ]);
+
+        register_rest_route($this->namespace, "{$this->rest_base}/shares", [
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [$this, 'sharedFiles'],
+                'permission_callback' => [$this, 'hasAllPermission'],
+            ]
+        ]);
+
+        register_rest_route($this->namespace, "{$this->rest_base}/downloads", [
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [$this, 'downloadFiles'],
+                'permission_callback' => [$this, 'hasAllPermission'],
+            ]
+        ]);
+
+        register_rest_route($this->namespace, "{$this->rest_base}/cache", [
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [$this, 'getCacheFiles'],
+                'permission_callback' => [$this, 'hasAllPermission'],
+                'args'                => [
+                    'page' => [
+                        'type'     => 'integer',
+                        'required' => false,
+                        'default'  => 1,
+                    ],
+                    'perPage' => [
+                        'type'     => 'integer',
+                        'required' => false,
+                        'default'  => 20,
+                    ],
+                    'order' => [
+                        'type'     => 'string',
+                        'required' => false,
+                        'default'  => 'DESC',
+                        'enum'     => ['ASC', 'DESC'],
+                    ],
+                    'orderby' => [
+                        'type'     => 'string',
+                        'required' => false,
+                        'default'  => 'createdAt',
+                        'enum'     => ['createdAt', 'updatedAt', 'size', 'name'],
+                    ],
+                    'accountId' => [
+                        'type'     => 'string',
+                        'required' => false,
+                    ],
+                ],
+            ]
+        ]);
+
+
 
         register_rest_route($this->namespace, "{$this->rest_base}/(?P<fileKey>[^/]+)", [
             [
@@ -585,9 +724,60 @@ class File extends BaseController
                 $fileKey,
             );
 
-            return $this->successResponse($shareLink, 'Share link retrieved successfully');
+            return $this->successResponse([
+                'link' => $shareLink,
+            ], 'Share link retrieved successfully');
         } catch (\Exception $e) {
             return $this->handleException($e, 'Failed to retrieve share link');
+        }
+    }
+
+    public function updateShareLink(WP_REST_Request $request): WP_REST_Response
+    {
+        try {
+            $shareLinkId = $request->get_param('shareLinkId');
+            $fileKey     = $request->get_param('fileKey');
+            $expireIn    = $request->get_param('expireIn');
+            $password    = $request->get_param('password');
+
+            if (empty($fileKey) || empty($shareLinkId)) {
+                return $this->errorResponse('File key and share link Id is required', self::HTTP_BAD_REQUEST);
+            }
+
+            $shareLink = App::getInstance()->updateSharedLink($fileKey, $shareLinkId, [
+                'expireIn'    => $expireIn,
+                'password'    => $password,
+            ]);
+
+            if (is_wp_error($shareLink)) {
+                return $this->errorResponse($shareLink->get_error_message(), self::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            return $this->successResponse($shareLink, 'Share link updated successfully');
+        } catch (\Exception $e) {
+            return $this->handleException($e, 'Failed to retrieve share link');
+        }
+    }
+
+    public function deleteShareLink(WP_REST_Request $request): WP_REST_Response
+    {
+        try {
+            $shareLinkId = $request->get_param('shareLinkId');
+            $fileKey     = $request->get_param('fileKey');
+
+            if (empty($fileKey) || empty($shareLinkId)) {
+                return $this->errorResponse('File key and share link Id is required', self::HTTP_BAD_REQUEST);
+            }
+
+            $result = App::getInstance()->deleteSharedLink($fileKey, $shareLinkId);
+
+            if (is_wp_error($result)) {
+                return $this->errorResponse($result->get_error_message(), self::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            return $this->successResponse(null, 'Share link deleted successfully');
+        } catch (\Exception $e) {
+            return $this->handleException($e, 'Failed to delete share link');
         }
     }
 
@@ -604,14 +794,14 @@ class File extends BaseController
                 return $this->errorResponse('File key is required', self::HTTP_BAD_REQUEST);
             }
 
-            $shareLink = App::getInstance()->generateDownloadLink($fileKey, [
+            $downloadLink = App::getInstance()->generateDownloadLink($fileKey, [
                 'expireIn'   => $expireIn,
                 'password'   => $password,
                 'limit'      => $limit,
             ]);
 
-            if (is_wp_error($shareLink)) {
-                return $this->errorResponse($shareLink->get_error_message(), self::HTTP_INTERNAL_SERVER_ERROR);
+            if (is_wp_error($downloadLink)) {
+                return $this->errorResponse($downloadLink->get_error_message(), self::HTTP_INTERNAL_SERVER_ERROR);
             }
 
             Notifications::notify(
@@ -620,9 +810,62 @@ class File extends BaseController
                 $fileKey,
             );
 
-            return $this->successResponse($shareLink, 'Download link retrieved successfully');
+            return $this->successResponse([
+                'link' => $downloadLink,
+            ], 'Download link retrieved successfully');
         } catch (\Exception $e) {
             return $this->handleException($e, 'Failed to retrieve download link');
+        }
+    }
+
+    public function updateDownloadLink(WP_REST_Request $request): WP_REST_Response
+    {
+        try {
+            $downloadLinkId = $request->get_param('downloadLinkId');
+            $fileKey        = $request->get_param('fileKey');
+            $expireIn       = $request->get_param('expireIn');
+            $password       = $request->get_param('password');
+            $limit          = $request->get_param('limit');
+
+            if (empty($fileKey) || empty($downloadLinkId)) {
+                return $this->errorResponse('File key and download link Id is required', self::HTTP_BAD_REQUEST);
+            }
+
+            $downloadLink = App::getInstance()->updateDownloadLink($fileKey, $downloadLinkId, [
+                'expireIn'   => $expireIn,
+                'password'   => $password,
+                'limit'      => $limit,
+            ]);
+
+            if (is_wp_error($downloadLink)) {
+                return $this->errorResponse($downloadLink->get_error_message(), self::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            return $this->successResponse($downloadLink, 'Download link updated successfully');
+        } catch (\Exception $e) {
+            return $this->handleException($e, 'Failed to retrieve download link');
+        }
+    }
+
+    public function deleteDownloadLink(WP_REST_Request $request): WP_REST_Response
+    {
+        try {
+            $downloadLinkId = $request->get_param('downloadLinkId');
+            $fileKey        = $request->get_param('fileKey');
+
+            if (empty($fileKey) || empty($downloadLinkId)) {
+                return $this->errorResponse('File key and download link Id is required', self::HTTP_BAD_REQUEST);
+            }
+
+            $result = App::getInstance()->deleteDownloadLink($fileKey, $downloadLinkId);
+
+            if (is_wp_error($result)) {
+                return $this->errorResponse($result->get_error_message(), self::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            return $this->successResponse(null, 'Download link deleted successfully');
+        } catch (\Exception $e) {
+            return $this->handleException($e, 'Failed to delete download link');
         }
     }
 
@@ -705,5 +948,88 @@ class File extends BaseController
         );
 
         return "$newName.$extension";
+    }
+
+    public function sharedFiles(WP_REST_Request $request): WP_REST_Response
+    {
+        try {
+            $page      = $request->get_param('page')      ?? 1;
+            $perPage   = $request->get_param('perPage')   ?? 20;
+            $order     = $request->get_param('order')     ?? 'desc';
+            $orderBy   = $request->get_param('orderBy')   ?? 'createdAt';
+            $accountId = $request->get_param('accountId') ?? null;
+
+
+            $result        = ModelFiles::getInstance()->sharedFiles([
+                'accountId' => $accountId,
+                'page'      => $page,
+                'perPage'   => $perPage,
+                'order'     => $order,
+                'orderBy'   => $orderBy,
+            ]);
+
+            if (is_wp_error($result)) {
+                return $this->errorResponse($result->get_error_message(), self::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            return $this->successResponse($result, 'Shared files retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->handleException($e, 'Failed to retrieve shared files');
+        }
+    }
+
+    public function downloadFiles(WP_REST_Request $request): WP_REST_Response
+    {
+        try {
+            $page      = $request->get_param('page')      ?? 1;
+            $perPage   = $request->get_param('perPage')   ?? 20;
+            $order     = $request->get_param('order')     ?? 'desc';
+            $orderBy   = $request->get_param('orderBy')   ?? 'createdAt';
+            $accountId = $request->get_param('accountId') ?? null;
+
+
+            $result        = ModelFiles::getInstance()->downloadedFiles([
+                'accountId' => $accountId,
+                'page'      => $page,
+                'perPage'   => $perPage,
+                'order'     => $order,
+                'orderBy'   => $orderBy,
+            ]);
+
+            if (is_wp_error($result)) {
+                return $this->errorResponse($result->get_error_message(), self::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            return $this->successResponse($result, 'Downloaded files retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->handleException($e, 'Failed to retrieve downloaded files');
+        }
+    }
+
+    public function getCacheFiles(WP_REST_Request $request): WP_REST_Response
+    {
+        try {
+            $page      = $request->get_param('page')      ?? 1;
+            $perPage   = $request->get_param('perPage')   ?? 20;
+            $order     = $request->get_param('order')     ?? 'desc';
+            $orderBy   = $request->get_param('orderBy')   ?? 'createdAt';
+            $accountId = $request->get_param('accountId') ?? null;
+
+            $result    = ModelFiles::getInstance()->cachedFiles([
+                'accountId' => $accountId,
+                'page'      => $page,
+                'perPage'   => $perPage,
+                'order'     => $order,
+                'orderBy'   => $orderBy,
+            ]);
+
+            if (is_wp_error($result)) {
+                return $this->errorResponse($result->get_error_message(), self::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            return $this->successResponse($result, 'Cached files retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->handleException($e, 'Failed to retrieve cached files');
+        }
     }
 }

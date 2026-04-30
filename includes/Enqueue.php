@@ -375,8 +375,10 @@ class Enqueue
      */
     private function getLocalizeData($hook = false, $script = 'admin')
     {
-        $appearance        = Helpers::getSettings(['appearance']);
-        $allowDotExtension = Helpers::getSetting('advanced.allowDotExtension', true);
+        $appearance         = Helpers::getSettings(['appearance']);
+        $allowDotExtension  = Helpers::getSetting('advanced.allowDotExtension', true);
+        $isUserLoggedIn     = is_user_logged_in();
+
         $data              = [
             'ajaxUrl'           => esc_url(admin_url('admin-ajax.php')),
             'restUrl'           => esc_url(rest_url('integrate-dropbox/v1/')),
@@ -385,7 +387,7 @@ class Enqueue
             'siteUrl'           => site_url(),
             'pluginUrl'         => CCPIDB_URL,
             'isAdmin'           => is_admin(),
-            'isLoggedIn'        => is_user_logged_in(),
+            'isLoggedIn'        => $isUserLoggedIn,
             'version'           => CCPIDB_VERSION,
             'pluginName'        => CCPIDB_NAME,
             'assetUrl'          => CCPIDB_ASSETS,
@@ -396,20 +398,25 @@ class Enqueue
             'moduleList'        => ccpidbGetModules(),
         ];
 
-        if (ccpidbGetCurrentUserAccess()) {
+        if ($isUserLoggedIn) {
+            $currentUser         = wp_get_current_user();
             $data['currentUser'] = [
-                'id'                   => get_current_user_id(),
-                'name'                 => wp_get_current_user()->display_name,
-                'username'             => wp_get_current_user()->user_login,
-                'roles'                => wp_get_current_user()->roles ?? ['subscriber'],
-                'can'                  => [
+                'id'          => $currentUser->ID,
+                'name'        => $currentUser->display_name,
+                'username'    => $currentUser->user_login,
+                'email'       => $currentUser->user_email,
+                'roles'       => $currentUser->roles ?? ['subscriber'],
+            ];
+
+            if (ccpidbGetCurrentUserAccess()) {
+                $data['currentUser']['can'] = [
                     'manageSettings'            => ccpidbHasUserAccessPage('settings'),
                     'manageFileBrowser'         => ccpidbHasUserAccessPage('accounts'),
                     'manageModuleBuilder'       => ccpidbHasUserAccessPage('module_builder'),
                     'manageMediaLibrary'        => ccpidbHasUserAccessPage('media_library'),
                     'hasFullAccess'             => ccpidbGetCurrentUserAccess() === 'true',
-                ]
-            ];
+                ];
+            }
         }
 
         if (ccpidbGetCurrentUserAccess()) {

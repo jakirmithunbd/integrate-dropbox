@@ -3,6 +3,7 @@
 namespace CodeConfig\IDB\API;
 
 use CodeConfig\IDB\API\Controllers\Account;
+use CodeConfig\IDB\API\Controllers\Dashboard;
 use CodeConfig\IDB\API\Controllers\File;
 use CodeConfig\IDB\API\Controllers\Folder;
 use CodeConfig\IDB\API\Controllers\MediaLibrary;
@@ -38,6 +39,7 @@ class ApiRegistry
             'folder'        => new Folder(),
             'photo'         => new Photo(),
             'media-library' => new MediaLibrary(),
+            'dashboard'     => new Dashboard(),
         ];
     }
 

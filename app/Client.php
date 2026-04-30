@@ -141,18 +141,8 @@ class Client
      */
     public function getAuthUrl($prompt = ['prompt' => 'login'])
     {
-        // $accounts = Accounts::getInstance()->getAccounts();
-
-        // if (count($accounts) >= 1 && ccpidb_fs()->is_free_plan()) {
-        //     return new WP_Error(403, __('You cannot authorize more than one account in free version.', 'integrate-dropbox'));
-        // }
 
         $authHelper      = $this->getNewClient()->getAuthHelper();
-
-        // $urlState = admin_url('admin.php?page=integrate-dropbox&action=integrate-dropbox-authorization');
-        // $urlState .= sprintf('&site_url=%s', site_url());
-        // $encodeState = strtr(base64_encode($urlState), '+/=', '-_~');
-
 
         $tokenAccessType = 'offline';
         $nonce           = wp_create_nonce('ccpidb-auth-nonce');

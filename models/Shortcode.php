@@ -492,7 +492,7 @@ class Shortcode extends BaseModel {
      * and optional schema validation and sanitization.
      *
      * @param array $data The data array containing 'type' and serialized 'data'.
-     * @param bool $validateSchema Whether to validate the data against a schema.
+     * @param array $config Optional configuration for processing, including:
      *
      * @return array|WP_Error Processed and optionally validated data.
      */

@@ -60,8 +60,6 @@ class Files extends BaseModel {
 
     public function __construct() {
         parent::__construct( self::TABLE_NAME );
-        // $this->getChildPathsWithThumbnails(['7618d90767fefcb7d21109071e707ae1'], 'id:XR5DPLkvVHQAAAAAAAADAA');
-        // $this->getChildPathsWithThumbnails(['7618d90767fefcb7d21109071e707ae1'], 'id:XR5DPLkvVHQAAAAAAAADAA');
     }
 
     /**
@@ -1194,6 +1192,39 @@ class Files extends BaseModel {
         return "{$fileKey}-{$key}";
     }
 
+    public function updateSharedKey( $fileKey, $shareLinkId, $options = [] ) {
+        $sharedData = $this->getSharedData( $fileKey );
+        if ( empty( $sharedData[$shareLinkId] ) ) {
+            return new WP_Error(404, __( 'The specified share link does not exist.', 'integrate-dropbox' ));
+        }
+        $shareInfo = $sharedData[$shareLinkId];
+        $expireIn = ( isset( $options['expireIn'] ) ? intval( $options['expireIn'] ) : null );
+        $password = ( isset( $options['password'] ) ? sanitize_text_field( $options['password'] ) : null );
+        if ( $expireIn !== null ) {
+            $shareInfo['expiry'] = ( $expireIn > 0 ? time() + $expireIn : 0 );
+        }
+        if ( $password !== null ) {
+            $shareInfo['password'] = ( !empty( $password ) ? md5( $password ) : '' );
+        }
+        // Update the shared data with the modified share info
+        $sharedData[$shareLinkId] = $shareInfo;
+        // Save the entire sharedData list
+        return $this->saveSharedData( $fileKey, $sharedData );
+    }
+
+    public function deleteSharedKey( $fileKey, $shareLinkId ) {
+        $sharedData = $this->getSharedData( $fileKey );
+        if ( empty( $sharedData[$shareLinkId] ) && $shareLinkId !== 'all' ) {
+            return false;
+        }
+        if ( $shareLinkId === 'all' ) {
+            $sharedData = null;
+        } else {
+            unset($sharedData[$shareLinkId]);
+        }
+        return $this->saveSharedData( $fileKey, $sharedData );
+    }
+
     public function getDownloadKey( $fileKey, $options = [] ) {
         $defaults = [
             'expireIn' => 3600,
@@ -1223,19 +1254,55 @@ class Files extends BaseModel {
         return "{$fileKey}-{$key}";
     }
 
+    public function updateDownloadKey( $fileKey, $downloadLinkId, $options = [] ) {
+        $downloadData = $this->getDownloadData( $fileKey );
+        if ( empty( $downloadData[$downloadLinkId] ) ) {
+            return new WP_Error(404, __( 'The specified download link does not exist.', 'integrate-dropbox' ));
+        }
+        $downloadInfo = $downloadData[$downloadLinkId];
+        $expireIn = ( isset( $options['expireIn'] ) ? intval( $options['expireIn'] ) : null );
+        $password = ( isset( $options['password'] ) ? sanitize_text_field( $options['password'] ) : null );
+        $limit = ( isset( $options['limit'] ) ? intval( $options['limit'] ) : null );
+        if ( $expireIn !== null ) {
+            $downloadInfo['expiry'] = ( $expireIn > 0 ? time() + $expireIn : 0 );
+        }
+        if ( $password !== null ) {
+            $downloadInfo['password'] = ( !empty( $password ) ? md5( $password ) : '' );
+        }
+        if ( $limit !== null ) {
+            $downloadInfo['limit'] = max( 0, $limit );
+        }
+        // Update the shared data with the modified share info
+        $downloadData[$downloadLinkId] = $downloadInfo;
+        // Save the entire sharedData list
+        return $this->saveDownloadData( $fileKey, $downloadData );
+    }
+
+    public function deleteDownloadKey( $fileKey, $downloadLinkId ) {
+        $downloadData = $this->getDownloadData( $fileKey );
+        if ( empty( $downloadData[$downloadLinkId] ) && $downloadLinkId !== 'all' ) {
+            return false;
+        }
+        if ( $downloadLinkId === 'all' ) {
+            $downloadData = null;
+        } else {
+            unset($downloadData[$downloadLinkId]);
+        }
+        return $this->saveDownloadData( $fileKey, $downloadData );
+    }
+
     public function validateSharedLink( $combinedKey, $password = '' ) {
         [$fileKey, $linkKey] = $this->parseCombinedKey( $combinedKey );
         if ( !$fileKey || !$linkKey ) {
-            return false;
+            return new WP_Error(400, __( 'The provided link is invalid.', 'integrate-dropbox' ));
         }
         $sharedData = $this->getSharedData( $fileKey );
         if ( empty( $sharedData[$linkKey] ) ) {
-            return false;
+            return new WP_Error(404, __( 'The shared link does not exist.', 'integrate-dropbox' ));
         }
         $shareInfo = $sharedData[$linkKey];
         if ( $shareInfo['expiry'] < time() && $shareInfo['expiry'] != 0 ) {
-            $this->deleteSharedEntry( $fileKey, $linkKey );
-            return false;
+            return new WP_Error(403, __( 'This shared link has expired.', 'integrate-dropbox' ));
         }
         $hashedPassword = md5( sanitize_text_field( $password ) );
         if ( !empty( $shareInfo['password'] ) ) {
@@ -1250,7 +1317,7 @@ class Files extends BaseModel {
         $shareInfo['lastViewed'] = current_time( 'mysql' );
         $result = $this->updateSharedData( $combinedKey, $shareInfo );
         if ( is_wp_error( $result ) ) {
-            return false;
+            return $result;
         }
         return $sharedData[$linkKey];
     }
@@ -1258,21 +1325,20 @@ class Files extends BaseModel {
     public function validateDownloadLink( $combinedKey, $password = '' ) {
         [$fileKey, $linkKey] = $this->parseCombinedKey( $combinedKey );
         if ( !$fileKey || !$linkKey ) {
-            return false;
+            return new WP_Error(400, __( 'The provided link is invalid.', 'integrate-dropbox' ));
         }
         $downloadData = $this->getDownloadData( $fileKey );
         if ( empty( $downloadData[$linkKey] ) ) {
-            return false;
+            return new WP_Error(404, __( 'The download link does not exist.', 'integrate-dropbox' ));
         }
         $downloadInfo = $downloadData[$linkKey];
         if ( $downloadInfo['expiry'] < time() && $downloadInfo['expiry'] != 0 ) {
             $this->deleteDownloadEntry( $fileKey, $linkKey );
-            return false;
+            return new WP_Error(403, __( 'This download link has expired.', 'integrate-dropbox' ));
         }
         $downloadLimit = intval( $downloadInfo['limit'] ?? 0 );
         if ( $downloadLimit > 0 && intval( $downloadInfo['downloadCount'] ?? 0 ) >= $downloadLimit ) {
-            $this->deleteDownloadEntry( $fileKey, $linkKey );
-            return new WP_Error(401, __( 'The download limit for this link has been exceeded.', 'integrate-dropbox' ));
+            return new WP_Error(403, __( 'The download limit for this link has been exceeded.', 'integrate-dropbox' ));
         }
         $hashedPassword = md5( sanitize_text_field( $password ) );
         if ( !empty( $downloadInfo['password'] ) ) {
@@ -1287,7 +1353,7 @@ class Files extends BaseModel {
         $downloadInfo['lastViewed'] = current_time( 'mysql' );
         $result = $this->updateDownloadData( $combinedKey, $downloadInfo );
         if ( is_wp_error( $result ) ) {
-            return false;
+            return $result;
         }
         return $downloadData[$linkKey];
     }
@@ -1329,17 +1395,22 @@ class Files extends BaseModel {
         }
         $metaData = maybe_unserialize( $file->metaData ) ?? [];
         $metaData['sharedData'] = $sharedData;
-        return $wpdb->update(
+        $result = $wpdb->update(
             $this->tableName,
             [
-                'metaData' => maybe_serialize( $metaData ),
+                'metaData'  => maybe_serialize( $metaData ),
+                'updatedAt' => current_time( 'mysql' ),
             ],
             [
                 'fileKey' => $fileKey,
             ],
-            ['%s'],
+            ['%s', '%s'],
             ['%s']
         );
+        if ( $result === false ) {
+            return new WP_Error('update_failed', __( 'Failed to update shared data.', 'integrate-dropbox' ));
+        }
+        return $this->getSharedData( $fileKey );
     }
 
     private function saveDownloadData( $fileKey, $downloadData ) {
@@ -1350,17 +1421,121 @@ class Files extends BaseModel {
         }
         $metaData = maybe_unserialize( $file->metaData ) ?? [];
         $metaData['downloadData'] = $downloadData;
-        return $wpdb->update(
+        $result = $wpdb->update(
             $this->tableName,
             [
-                'metaData' => maybe_serialize( $metaData ),
+                'metaData'  => maybe_serialize( $metaData ),
+                'updatedAt' => current_time( 'mysql' ),
             ],
             [
                 'fileKey' => $fileKey,
             ],
-            ['%s'],
+            ['%s', '%s'],
             ['%s']
         );
+        if ( $result === false ) {
+            return new WP_Error('update_failed', __( 'Failed to update download data.', 'integrate-dropbox' ));
+        }
+        return $this->getDownloadData( $fileKey );
+    }
+
+    public function saveCachedData( $fileKey, $size ) {
+        global $wpdb;
+        $file = $wpdb->get_row( $wpdb->prepare( "SELECT metaData FROM %i WHERE fileKey = %s", $this->tableName, $fileKey ) );
+        if ( !$file ) {
+            return false;
+        }
+        $metaData = maybe_unserialize( $file->metaData ) ?? [];
+        $metaData['cachedData'][$size] = current_time( 'mysql' );
+        delete_transient( "idb_dashboard_image_cache" );
+        return $wpdb->update(
+            $this->tableName,
+            [
+                'metaData'  => maybe_serialize( $metaData ),
+                'updatedAt' => current_time( 'mysql' ),
+            ],
+            [
+                'fileKey' => $fileKey,
+            ],
+            ['%s', '%s'],
+            ['%s']
+        );
+    }
+
+    /**
+     * Remove cachedData from metaData for a file or all files by size
+     *
+     * @param string|null $fileKey Specific fileKey or null for all files
+     * @param string|null $size Specific size to remove or null to remove all sizes
+     * @return int Number of records updated
+     */
+    public function deleteCachedData( $fileKey = null, $size = null ) : int {
+        global $wpdb;
+        if ( $fileKey ) {
+            // Single file - remove cachedData from its metaData
+            $file = $wpdb->get_row( $wpdb->prepare( "SELECT metaData FROM %i WHERE fileKey = %s", $this->tableName, $fileKey ) );
+            if ( !$file ) {
+                return 0;
+            }
+            $metaData = maybe_unserialize( $file->metaData ) ?? [];
+            if ( $size ) {
+                // Remove specific size from cachedData
+                unset($metaData['cachedData'][$size]);
+            } else {
+                // Remove entire cachedData array
+                unset($metaData['cachedData']);
+            }
+            $wpdb->update(
+                $this->tableName,
+                [
+                    'metaData'  => maybe_serialize( $metaData ),
+                    'updatedAt' => current_time( 'mysql' ),
+                ],
+                [
+                    'fileKey' => $fileKey,
+                ],
+                ['%s', '%s'],
+                ['%s']
+            );
+            return 1;
+        }
+        // All files - remove cachedData entries
+        if ( $size ) {
+            // Get all files that have cachedData for this size
+            $files = $wpdb->get_results( $wpdb->prepare( "SELECT fileKey, metaData FROM %i WHERE metaData LIKE %s", $this->tableName, '%' . $wpdb->esc_like( '"cachedData";a:' ) . '%' ) );
+            $count = 0;
+            foreach ( $files as $file ) {
+                $metaData = maybe_unserialize( $file->metaData ) ?? [];
+                if ( isset( $metaData['cachedData'][$size] ) ) {
+                    unset($metaData['cachedData'][$size]);
+                    if ( empty( $metaData['cachedData'] ) ) {
+                        unset($metaData['cachedData']);
+                    }
+                    $wpdb->update(
+                        $this->tableName,
+                        [
+                            'metaData'  => maybe_serialize( $metaData ),
+                            'updatedAt' => current_time( 'mysql' ),
+                        ],
+                        [
+                            'fileKey' => $file->fileKey,
+                        ],
+                        ['%s', '%s'],
+                        ['%s']
+                    );
+                    $count++;
+                }
+            }
+            return $count;
+        }
+        // Remove all cachedData from all files
+        return ( $wpdb->query( $wpdb->prepare(
+            "UPDATE %i SET metaData = REPLACE(metaData, %s, 's:0:\"\";'), updatedAt = %s WHERE metaData LIKE %s",
+            $this->tableName,
+            's:10:"cachedData";',
+            current_time( 'mysql' ),
+            '%' . $wpdb->esc_like( '"cachedData";a:' ) . '%'
+        ) ) ?: 0 );
     }
 
     public function updateSharedData( $combinedKey, $updates = [] ) {
@@ -1376,7 +1551,11 @@ class Files extends BaseModel {
         $sharedData[$linkKey] = array_merge( $sharedData[$linkKey], array_filter( $updates, function ( $v ) {
             return $v !== null;
         } ) );
-        return $this->saveSharedData( $fileKey, $sharedData );
+        $result = $this->saveSharedData( $fileKey, $sharedData );
+        if ( $result === false ) {
+            return new WP_Error('update_failed', __( 'Failed to update shared data.', 'integrate-dropbox' ));
+        }
+        return $this->getSharedData( $fileKey );
     }
 
     public function updateDownloadData( $combinedKey, $updates = [] ) {
@@ -1392,14 +1571,22 @@ class Files extends BaseModel {
         $downloadData[$linkKey] = array_merge( $downloadData[$linkKey], array_filter( $updates, function ( $v ) {
             return $v !== null;
         } ) );
-        return $this->saveDownloadData( $fileKey, $downloadData );
+        $result = $this->saveDownloadData( $fileKey, $downloadData );
+        if ( $result === false ) {
+            return new WP_Error('update_failed', __( 'Failed to update download data.', 'integrate-dropbox' ));
+        }
+        return $this->getDownloadData( $fileKey );
     }
 
     private function deleteSharedEntry( $fileKey, $linkKey ) {
         $sharedData = $this->getSharedData( $fileKey );
         if ( isset( $sharedData[$linkKey] ) ) {
             unset($sharedData[$linkKey]);
-            return $this->saveSharedData( $fileKey, $sharedData );
+            $result = $this->saveSharedData( $fileKey, $sharedData );
+            if ( $result === false ) {
+                return new WP_Error('update_failed', __( 'Failed to update shared data.', 'integrate-dropbox' ));
+            }
+            return $this->getSharedData( $fileKey );
         }
         return false;
     }
@@ -1408,7 +1595,11 @@ class Files extends BaseModel {
         $downloadData = $this->getDownloadData( $fileKey );
         if ( isset( $downloadData[$linkKey] ) ) {
             unset($downloadData[$linkKey]);
-            return $this->saveDownloadData( $fileKey, $downloadData );
+            $result = $this->saveDownloadData( $fileKey, $downloadData );
+            if ( $result === false ) {
+                return new WP_Error('update_failed', __( 'Failed to update download data.', 'integrate-dropbox' ));
+            }
+            return $this->getDownloadData( $fileKey );
         }
         return false;
     }
@@ -1543,6 +1734,94 @@ class Files extends BaseModel {
             return $item;
         }, $tree );
         return array_values( $tree );
+    }
+
+    public function sharedFiles( array $args = [] ) {
+        return $this->filesByMetaString( '"sharedData";a:', $args );
+    }
+
+    public function downloadedFiles( array $args = [] ) {
+        return $this->filesByMetaString( '"downloadData";a:', $args );
+    }
+
+    public function cachedFiles( array $args = [] ) {
+        return $this->filesByMetaString( '"cachedData";a:', $args );
+    }
+
+    private function filesByMetaString( string $string, array $args = [] ) {
+        global $wpdb;
+        $defaults = [
+            'accountId' => null,
+            'perPage'   => 5,
+            'page'      => 1,
+            'orderBy'   => 'updatedAt',
+            'order'     => 'DESC',
+        ];
+        $args = wp_parse_args( $args, $defaults );
+        $accountId = $args['accountId'];
+        if ( empty( $accountId ) ) {
+            $account = Accounts::getInstance()->getAccount();
+            $accountId = ( $account ? $account->id : null );
+        }
+        $perPage = (int) $args['perPage'];
+        $page = (int) $args['page'];
+        $pagination = $this->sanitizePagination( $page, $perPage );
+        $order = $this->sanitizeOrder( $args['order'] );
+        $orderBy = $this->sanitizeOrderBy( $args['orderBy'], [
+            'name',
+            'createdAt',
+            'updatedAt',
+            'size'
+        ] );
+        $sql = $wpdb->prepare( "SELECT * FROM %i WHERE `metaData` LIKE %s", $this->tableName, '%' . $wpdb->esc_like( $string ) . '%' );
+        $countSql = $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE `metaData` LIKE %s", $this->tableName, '%' . $wpdb->esc_like( $string ) . '%' );
+        if ( $args['accountId'] ) {
+            $sql .= $wpdb->prepare( " AND `accountId` = %s", $args['accountId'] );
+            $countSql .= $wpdb->prepare( " AND `accountId` = %s", $args['accountId'] );
+        }
+        if ( $order === 'ASC' ) {
+            $sql .= $wpdb->prepare(
+                " ORDER BY %i ASC LIMIT %d OFFSET %d",
+                $orderBy,
+                $pagination['perPage'],
+                $pagination['offset']
+            );
+        } else {
+            $sql .= $wpdb->prepare(
+                " ORDER BY %i DESC LIMIT %d OFFSET %d",
+                $orderBy,
+                $pagination['perPage'],
+                $pagination['offset']
+            );
+        }
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $files = $wpdb->get_results( $sql );
+        $total = $wpdb->get_var( $countSql );
+        if ( is_wp_error( $files ) ) {
+            return $files;
+        }
+        if ( empty( $files ) ) {
+            return [
+                'files'       => [],
+                'total'       => 0,
+                'perPage'     => $pagination['perPage'],
+                'currentPage' => $pagination['page'],
+                'totalPages'  => 0,
+                'hasMore'     => false,
+                'nextPage'    => null,
+            ];
+        }
+        $files = $this->processFiles( $files );
+        $result = [
+            'files'       => $files,
+            'total'       => (int) $total,
+            'perPage'     => $pagination['perPage'],
+            'currentPage' => $pagination['page'],
+            'totalPages'  => ceil( $total / $pagination['perPage'] ),
+            'hasMore'     => $pagination['page'] * $pagination['perPage'] < $total,
+            'nextPage'    => ( $pagination['page'] * $pagination['perPage'] < $total ? $pagination['page'] + 1 : null ),
+        ];
+        return $result;
     }
 
 }

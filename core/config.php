@@ -7,7 +7,7 @@ defined('ABSPATH') or exit('Direct access to this file is not allowed.');
  */
 define('CCPIDB_DB_VERSION', '1.0.0');
 define('CCPIDB_OPTIONS_VERSION', '1.0.0');
-define('CCPIDB_VERSION', '1.3.10');
+define('CCPIDB_VERSION', '1.3.11');
 define('CCPIDB_PLUGIN_BASE', plugin_basename(CCPIDB_FILE));
 
 /**

@@ -21,6 +21,11 @@ class AdminPages
             'id'       => 'settings',
             'menu'     => 'Settings',
             'slug'     => CCPIDB_SLUG . '#/settings/accounts',
+        ],
+        [
+            'id'       => 'dashboard',
+            'menu'     => 'Dashboard',
+            'slug'     => CCPIDB_SLUG . '#/dashboard/overview',
         ]
     ];
 

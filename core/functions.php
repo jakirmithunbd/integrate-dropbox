@@ -286,6 +286,9 @@ if ( !function_exists( "ccpidbGetDefaultSettings" ) ) {
                 'timer'       => "custom",
                 'customTimer' => 120,
             ],
+            'caching'                       => [
+                'imageCaching' => false,
+            ],
             'tools'                         => [
                 "autoSave" => false,
             ],

@@ -135,7 +135,7 @@ class Content
 
         $allowedExtensions = ['jpeg', 'png', 'webp'];
         $ext               = in_array($ext, $allowedExtensions, true) ? $ext : 'webp';
-        $isCacheable       = Helpers::getSetting('advanced.imageCaching', false);
+        $isCacheable       = Helpers::getSetting('caching.imageCaching', false);
 
         if ($isCacheable) {
             $cache         = new Cache();
@@ -188,7 +188,7 @@ class Content
             $this->safeRedirect($this->getUnknownIcon($file->getMimetype() ?? 'image/webp'), 0);
         }
 
-        if ($isCacheable) {
+        if ($isCacheable && !empty($cache)) {
             $cache->saveFile($thumbnailData['fileContents'], $key, $size, $ext);
         }
 
@@ -262,7 +262,13 @@ class Content
         $isValidLink = Files::getInstance()->validateSharedLink("$fileKey-$linkKey", $password);
 
         if (empty($isValidLink)) {
-            wp_die('Invalid or expired share link.', 'Error', ['response' => 400]);
+            // wp_die('Invalid or expired share link.', 'Error', ['response' => 400]);
+            ccpidbGetTemplate('notice-card/permission-denied', [
+                'title'       => __('Invalid Share Link', 'integrate-dropbox'),
+                'description' => $isValidLink->get_error_message(),
+                'card_status' => 'error',
+            ]);
+            exit;
         }
 
         if (is_wp_error($isValidLink)) {
@@ -277,7 +283,13 @@ class Content
                 exit;
             } else {
                 // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Not output, used internally
-                wp_die($isValidLink->get_error_message(), 'Error', ['response' => 400]);
+                // wp_die($isValidLink->get_error_message(), 'Error', ['response' => 400]);
+                ccpidbGetTemplate('notice-card/permission-denied', [
+                    'title'       => __('Invalid Share Link', 'integrate-dropbox'),
+                    'description' => $isValidLink->get_error_message(),
+                    'card_status' => 'error',
+                ]);
+                exit;
             }
         }
 
@@ -331,7 +343,6 @@ class Content
 
         $isValidLink = Files::getInstance()->validateDownloadLink("$fileKey-$linkKey", $password);
         if (empty($isValidLink)) {
-            // wp_die('Invalid or expired download link.', 'Error', ['response' => 400]);
             ccpidbGetTemplate('notice-card/permission-denied', [
                 'title'       => __('Invalid Download URL', 'integrate-dropbox'),
                 'description' => __('Invalid or expired download link.', 'integrate-dropbox'),
@@ -351,8 +362,12 @@ class Content
                 ]);
                 exit;
             } else {
-                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Not output, used internally
-                wp_die($isValidLink->get_error_message(), __('Error', 'integrate-dropbox'), ['response' => 400]);
+                ccpidbGetTemplate('notice-card/permission-denied', [
+                    'title'       => __('Invalid Download URL', 'integrate-dropbox'),
+                    'description' => $isValidLink->get_error_message(),
+                    'card_status' => 'error',
+                ]);
+                exit;
             }
         }
 

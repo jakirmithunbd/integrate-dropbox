@@ -262,6 +262,45 @@ class App {
         return $link;
     }
 
+    public function updateSharedLink( $fileKey, $shareLinkId, $options = [] ) {
+        $file = $this->model->getFile( $fileKey );
+        if ( empty( $file ) || is_wp_error( $file ) ) {
+            return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+        }
+        $updatedSharedData = $this->model->updateSharedKey( $fileKey, $shareLinkId, [
+            'expireIn' => $options['expireIn'] ?? null,
+            'password' => $options['password'] ?? null,
+        ] );
+        if ( empty( $updatedSharedData ) || is_wp_error( $updatedSharedData ) ) {
+            return new WP_Error('shared_link_error', __( 'Unable to update shared link.', 'integrate-dropbox' ));
+        }
+        $link = ccpidbGetUrl(
+            'share',
+            $shareLinkId,
+            $file->getName(),
+            null,
+            $file->getExtension()
+        );
+        return [
+            'link'        => $link,
+            'updatedData' => [
+                $shareLinkId => $updatedSharedData[$shareLinkId],
+            ] ?? [],
+        ];
+    }
+
+    public function deleteSharedLink( $fileKey, $shareLinkId ) {
+        $file = $this->model->getFile( $fileKey );
+        if ( empty( $file ) || is_wp_error( $file ) ) {
+            return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+        }
+        $result = $this->model->deleteSharedKey( $fileKey, $shareLinkId );
+        if ( is_wp_error( $result ) ) {
+            return new WP_Error('shared_link_deletion_error', __( 'Unable to delete shared link.', 'integrate-dropbox' ));
+        }
+        return true;
+    }
+
     public function generateDownloadLink( $fileKey, $options = [] ) {
         $file = $this->model->getFile( $fileKey );
         if ( empty( $file ) || is_wp_error( $file ) ) {
@@ -286,6 +325,49 @@ class App {
             $file->getExtension()
         );
         return $link;
+    }
+
+    public function updateDownloadLink( $fileKey, $downloadKeyId, $options = [] ) {
+        $file = $this->model->getFile( $fileKey );
+        if ( empty( $file ) || is_wp_error( $file ) ) {
+            return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+        }
+        $updatedData = $this->model->updateDownloadKey( $fileKey, $downloadKeyId, [
+            'expireIn' => $options['expireIn'] ?? null,
+            'password' => $options['password'] ?? null,
+            'limit'    => $options['limit'] ?? null,
+        ] );
+        if ( is_wp_error( $updatedData ) ) {
+            return $updatedData;
+        }
+        if ( empty( $updatedData ) ) {
+            return new WP_Error('download_link_error', __( 'Unable to update download link.', 'integrate-dropbox' ));
+        }
+        $link = ccpidbGetUrl(
+            'download',
+            $downloadKeyId,
+            $file->getName(),
+            null,
+            $file->getExtension()
+        );
+        return [
+            'link'        => $link,
+            'updatedData' => [
+                $downloadKeyId => $updatedData[$downloadKeyId] ?? [],
+            ],
+        ];
+    }
+
+    public function deleteDownloadLink( $fileKey, $downloadKeyId ) {
+        $file = $this->model->getFile( $fileKey );
+        if ( empty( $file ) || is_wp_error( $file ) ) {
+            return new WP_Error('file_not_found', __( 'File not found', 'integrate-dropbox' ));
+        }
+        $result = $this->model->deleteDownloadKey( $fileKey, $downloadKeyId );
+        if ( is_wp_error( $result ) ) {
+            return new WP_Error('download_link_deletion_error', __( 'Unable to delete download link.', 'integrate-dropbox' ));
+        }
+        return true;
     }
 
     public function getShareLink( $fileKey ) {
