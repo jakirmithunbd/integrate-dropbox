@@ -4,7 +4,7 @@ Tags: dropbox, embed, cloud-integration, media, file manager
 Requires at least: 6.2
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.3.10
+Stable tag: 1.3.11
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -241,6 +241,10 @@ https://youtu.be/i9U1E12ntSc?si=ovACiaYy9sQwUC65
 Check out the website for the File Manager for Dropbox, Install and Configure. [Documentation](https://codeconfig.dev/docs/how-to-connect-my-dropbox-app-with-wordpress/) | [Video](https://www.youtube.com/watch?v=YivpoNE8ukk)
 
 == Changelog ==
+= 1.3.11 (05/03/2026) =
+* Fix: Download button display issue
+* New: Dashboard Settings with Cache files system
+
 = 1.3.9 (05/03/2026) =
 * Fix: Resolved an issue with user access in the Media Library.
 

@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) or exit( 'Hey, what are you doing here? You silly human!' )
  * Plugin Name:       File Manager for Dropbox
  * Plugin URI:        https://codeconfig.dev/integrate-dropbox/
  * Description:       Integrate Dropbox: user-friendly WordPress plugin beautifully displays Dropbox files on posts, pages, & products.
- * Version:           1.3.10
+ * Version:           1.3.11
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            CodeConfig
